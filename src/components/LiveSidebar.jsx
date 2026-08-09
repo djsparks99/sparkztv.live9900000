@@ -4,7 +4,7 @@ import { api, fileUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { ChevronLeft, ChevronRight, User, Radio, Bell, BellOff, Tv, Calendar, Heart, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, User, Radio, Bell, BellOff, Tv, Calendar, Heart, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import StoriesSection from "@/components/StoriesSection";
 
@@ -364,44 +364,47 @@ export default function LiveSidebar() {
   return (
     <aside
       data-testid="live-sidebar"
-      className={`fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] flex-col border-r border-[#27272a] bg-[#050505] lg:flex ${
+      className={`fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] flex-col border-r border-[#1f1f23] bg-[#0e0e10] lg:flex ${
         collapsed ? "w-[60px]" : "w-[240px]"
       } transition-[width,top,height] duration-150 overflow-x-hidden`}
     >
-      <header className="flex flex-col border-b border-[#27272a] px-3 py-2.5 gap-1.5 min-w-0">
+      <header className="flex flex-col border-b border-[#1f1f23] px-3 py-3 gap-1 min-w-0 bg-[#0e0e10]">
         <div className="flex items-center justify-between gap-1 min-w-0">
-          {!collapsed && (
+          {!collapsed ? (
             <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-              <Heart className="h-3.5 w-3.5 text-[#e5ff00] fill-current shrink-0" />
-              <div className="label-caps mb-0 truncate text-[10px]">
-                {user ? "// FOLLOWED" : "// FEATURED"}
-              </div>
+              <span className="font-sans text-xs font-bold text-[#efeff1] uppercase tracking-wider">
+                For You
+              </span>
+            </div>
+          ) : (
+            <div className="flex w-full justify-center">
+              <Heart className="h-4 w-4 text-zinc-400" />
             </div>
           )}
           <button
             data-testid="sidebar-toggle"
             onClick={toggle}
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center border border-[#27272a] text-zinc-400 transition-colors hover:border-white hover:text-white"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-all"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             ) : (
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
             )}
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto divide-y divide-[#27272a]/40">
+      <div className="flex-1 overflow-y-auto divide-y divide-[#1f1f23]">
         <StoriesSection sidebar={true} collapsed={collapsed} />
 
         {!loaded ? (
           <div className="p-3 space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className="h-8 w-8 flex-shrink-0 animate-pulse bg-[#111]" />
-                {!collapsed && <div className="h-3 flex-1 animate-pulse bg-[#111]" />}
+                <div className="h-8 w-8 flex-shrink-0 animate-pulse bg-[#1f1f23]" />
+                {!collapsed && <div className="h-3 flex-1 animate-pulse bg-[#1f1f23]" />}
               </div>
             ))}
           </div>
@@ -412,14 +415,22 @@ export default function LiveSidebar() {
           />
         ) : (
           <>
-            {/* STRICT FOLLOWED LIVE SECTION (Only shows if you follow them, never yourself)[cite: 5] */}
+            {/* STRICT FOLLOWED LIVE SECTION (Only shows if you follow them, never yourself) */}
             {followedLive.length > 0 && (
-              <div>
+              <div className="py-1">
                 {!collapsed && (
-                  <div className="px-3 pt-3 pb-1.5 flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-widest text-[#e5ff00]">
-                    <span className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                      FOLLOWED LIVE ({followedLive.length})
+                  <div className="px-3 py-1.5 flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#efeff1]">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                        Followed Channels
+                      </span>
+                      <button className="text-zinc-400 hover:text-white" title="Sort by Viewers">
+                        <ArrowUpDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                      Viewers (High to Low)
                     </span>
                   </div>
                 )}
@@ -439,15 +450,14 @@ export default function LiveSidebar() {
               </div>
             )}
 
-            {/* RECOMMENDED LIVE (Only for guests or users following no channels)[cite: 5] */}
+            {/* RECOMMENDED LIVE (Only for guests or users following no channels) */}
             {recommendedLive.length > 0 && (!user || followedChannels.length === 0) && (
-              <div>
+              <div className="py-1">
                 {!collapsed && (
-                  <div className="px-3 pt-3 pb-1.5 flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-widest text-red-500">
-                    <span className="flex items-center gap-1">
-                      <Radio className="h-3 w-3 text-red-500 animate-pulse" />
-                      LIVE NOW ({recommendedLive.length})
-                    </span>
+                  <div className="px-3 py-1.5 flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#efeff1]">
+                      <span>Recommended Channels</span>
+                    </div>
                   </div>
                 )}
                 <ul>
@@ -566,17 +576,7 @@ export default function LiveSidebar() {
         )}
       </div>
 
-      {!collapsed && (
-        <footer className="border-t border-[#27272a] px-3 py-3 flex items-center justify-between bg-[#080808]">
-          <Link
-            to="/directory"
-            data-testid="sidebar-see-all"
-            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-zinc-400 hover:text-[#e5ff00] transition-colors"
-          >
-            <Radio className="h-3 w-3 text-[#e5ff00]" /> // BROWSE ALL DIRECTORY
-          </Link>
-        </footer>
-      )}
+
     </aside>
   );
 }
@@ -588,16 +588,24 @@ function SidebarBroadcasterItem({ channel, collapsed, isChimed, onToggleChime, n
   const displayName = getDisplayName(channel);
   const nextSet = hasSchedule ? channel.schedule[0] : null;
 
+  const formattedViewers = useMemo(() => {
+    const count = channel.viewer_count || 0;
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1) + "K";
+    }
+    return count.toString();
+  }, [channel.viewer_count]);
+
   const ringStyle = (isLive && showLiveIndicator)
-    ? "p-[2px] rounded-full bg-gradient-to-tr from-[#e5ff00] via-red-500 to-[#e5ff00] animate-pulse shadow-[0_0_12px_rgba(229,255,0,0.7)]"
+    ? "p-[1.5px] rounded-full border border-red-500 animate-fade-in"
     : hasSchedule
-    ? "p-[2px] rounded-full bg-gradient-to-tr from-[#e5ff00] to-yellow-300 shadow-[0_0_8px_rgba(229,255,0,0.5)]"
-    : "p-[1px] rounded-full bg-[#27272a]";
+    ? "p-[1.5px] rounded-full border border-[#e5ff00]"
+    : "p-[1px] rounded-full border border-zinc-700";
 
   return (
     <li>
       <div
-        className="group relative flex items-center justify-between border-b border-[#27272a]/60 px-2.5 py-2 transition-all hover:bg-[#0f0f0f]"
+        className="group relative flex items-center justify-between px-2.5 py-1.5 transition-all hover:bg-zinc-800/40"
         data-testid={`sidebar-broadcaster-${targetUsername}`}
       >
         <Link
@@ -605,45 +613,51 @@ function SidebarBroadcasterItem({ channel, collapsed, isChimed, onToggleChime, n
           title={`${displayName} (@${targetUsername}) ${isLive && showLiveIndicator ? '— LIVE NOW' : hasSchedule ? '— SCHEDULED SET' : ''}`}
           className="flex items-center gap-2.5 min-w-0 flex-1"
         >
+          {/* Avatar Container */}
           <div className="relative flex-shrink-0">
             <div className={ringStyle}>
               {channel.photo_url ? (
                 <img
                   src={fileUrl(channel.photo_url)}
                   alt={displayName}
-                  className="h-8 w-8 rounded-full border border-black object-cover grayscale group-hover:grayscale-0 transition-all"
+                  className="h-8 w-8 rounded-full object-cover transition-all"
                 />
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-black bg-black">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
                   <User className="h-4 w-4 text-zinc-400" />
                 </div>
               )}
             </div>
-
             {isLive && showLiveIndicator && (
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-black bg-red-500" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-black bg-red-600 animate-pulse" />
             )}
           </div>
 
+          {/* Details (Only visible when sidebar is expanded) */}
           {!collapsed && (
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 pr-1">
               <div className="flex items-center justify-between gap-1">
-                <span className="truncate font-mono text-[11px] font-bold uppercase tracking-wider text-white group-hover:text-[#e5ff00] transition-colors">
+                <span className="truncate font-sans text-[13px] font-semibold text-[#efeff1] group-hover:text-[#bf94ff] transition-colors leading-tight">
                   {displayName}
                 </span>
                 {isLive && showLiveIndicator ? (
-                  <span className="font-mono text-[9px] font-bold text-red-500 animate-pulse">
-                    LIVE
-                  </span>
+                  <div className="flex items-center gap-1 flex-shrink-0 text-[#efeff1] font-sans text-xs">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                    <span>{formattedViewers}</span>
+                  </div>
                 ) : hasSchedule ? (
-                  <span className="font-mono text-[8px] uppercase tracking-wider text-[#e5ff00] border border-[#e5ff00]/40 px-1 py-0.2">
+                  <span className="font-mono text-[8px] uppercase tracking-wider text-[#e5ff00] border border-[#e5ff00]/40 px-1 py-0.2 shrink-0">
                     {nextSet.day}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="text-[10px] text-zinc-600 uppercase font-mono shrink-0">
+                    off
+                  </span>
+                )}
               </div>
 
-              <div className="mt-0.5 flex items-center justify-between font-mono text-[10px] text-zinc-400">
-                <span className="truncate text-zinc-500">
+              <div className="mt-0.5 flex items-center justify-between font-sans text-[11px] text-zinc-400 leading-none">
+                <span className="truncate text-zinc-400 group-hover:text-zinc-300">
                   {isLive && showLiveIndicator && channel.stream_title
                     ? channel.stream_title
                     : hasSchedule && nextSet
@@ -655,17 +669,18 @@ function SidebarBroadcasterItem({ channel, collapsed, isChimed, onToggleChime, n
           )}
         </Link>
 
+        {/* Chime and Enter buttons (only visible when expanded) */}
         {!collapsed && (
-          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity ml-1.5 flex-shrink-0">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1 flex-shrink-0">
             <button
               type="button"
               onClick={(e) => onToggleChime(targetUsername, displayName, e)}
-              className={`p-1 transition-colors ${
+              className={`p-1 rounded hover:bg-zinc-700/50 transition-all ${
                 isChimed
-                  ? "text-[#e5ff00] hover:text-white"
-                  : "text-zinc-600 hover:text-white"
+                  ? "text-[#e5ff00]"
+                  : "text-zinc-500 hover:text-[#efeff1]"
               }`}
-              title={isChimed ? "Chime Active — Click to remove" : "Set Chime Reminder for Green Room live alert"}
+              title={isChimed ? "Chime Active — Click to remove" : "Set Chime Reminder"}
               aria-label="Set Chime Reminder"
             >
               {isChimed ? <Bell className="h-3.5 w-3.5 fill-[#e5ff00]" /> : <BellOff className="h-3 w-3" />}
@@ -678,7 +693,7 @@ function SidebarBroadcasterItem({ channel, collapsed, isChimed, onToggleChime, n
                 e.stopPropagation();
                 navigate(`/channel/${targetUsername}`);
               }}
-              className="p-1 text-zinc-600 hover:text-[#e5ff00] transition-colors"
+              className="p-1 rounded hover:bg-zinc-700/50 text-zinc-500 hover:text-[#efeff1] transition-all"
               title="Enter Green Room / Channel"
               aria-label="Enter Green Room"
             >

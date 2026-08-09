@@ -30,11 +30,32 @@ export default function Dashboard() {
   const [channel, setChannel] = useState(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("music");
+  const [tags, setTags] = useState([]);
+  const [newTag, setNewTag] = useState("");
   const [reveal, setReveal] = useState(false);
   const [creatingStream, setCreatingStream] = useState(false);
   const [autoDetect, setAutoDetect] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleAddTag = () => {
+    const trimmed = newTag.trim().toLowerCase();
+    if (!trimmed) return;
+    if (tags.includes(trimmed)) {
+      toast.error("Tag already exists.");
+      return;
+    }
+    if (tags.length >= 8) {
+      toast.error("Maximum of 8 tags allowed.");
+      return;
+    }
+    setTags([...tags, trimmed]);
+    setNewTag("");
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter((t) => t !== tagToRemove));
+  };
 
   useLivepeerAutoPoll(channel?.username);
 
@@ -60,6 +81,7 @@ export default function Dashboard() {
         setChannel(data);
         setTitle(data.stream_title || "");
         setCategory(data.category || "music");
+        setTags(data.tags || []);
       } else {
         setError("No channel metadata returned from server.");
       }
@@ -124,6 +146,7 @@ export default function Dashboard() {
       const { data } = await api.patch("/channels/mine", {
         stream_title: title,
         category,
+        tags,
         stream_key: channel?.stream_key || undefined,
         playback_id: channel?.playback_id || undefined,
         livepeer_stream_id: channel?.livepeer_stream_id || undefined,
@@ -419,6 +442,53 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="label-caps" htmlFor="tags-input">MUSIC GENRES & TAGS</label>
+                <div className="flex gap-2">
+                  <input
+                    id="tags-input"
+                    className="input-terminal"
+                    placeholder="e.g. neurofunk, liquid, trance"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-4 py-2 bg-[#e5ff00] text-black font-mono text-xs font-bold hover:bg-[#cbe600] whitespace-nowrap"
+                  >
+                    ADD
+                  </button>
+                </div>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#18181b] border border-[#27272a] rounded-sm text-xs font-mono text-zinc-300"
+                    >
+                      <span>#{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="text-zinc-500 hover:text-red-400 transition-colors"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                  {tags.length === 0 && (
+                    <p className="text-[11px] font-mono text-zinc-500 italic mt-0.5">
+                      No custom tags added yet.
+                    </p>
+                  )}
+                </div>
               </div>
               <button data-testid="channel-save-btn" onClick={save} className="btn-primary w-full">
                 SAVE CHANGES

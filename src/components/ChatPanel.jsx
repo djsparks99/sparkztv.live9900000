@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage } from "@/lib/api";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins } from "lucide-react";
+import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingReactions from "./FloatingReactions";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ function wsUrl(username, token, guestName = "") {
   return `${wsBase}/api/ws/chat/${encodeURIComponent(username)}?${query}`;
 }
 
-export default function ChatPanel({ username }) {
+export default function ChatPanel({ username, onCollapse }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -453,38 +453,33 @@ export default function ChatPanel({ username }) {
   return (
     <div
       data-testid="chat-panel"
-      className="relative flex h-full lg:h-[580px] flex-col border border-[#27272a] bg-[#0a0a0a]"
+      className="relative flex h-full flex-col border border-[#27272a] bg-[#0e0e10]"
     >
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-[#27272a] px-4 py-3 bg-[#0d0d0e]">
+      <header className="flex items-center justify-between border-b border-[#27272a] px-3 py-2 bg-[#0d0d0e]">
         <div className="flex items-center gap-2">
-          <div className="label-caps mb-0">// CROWD CHAT</div>
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="text-zinc-400 hover:text-[#e5ff00] transition-colors p-1 hover:bg-zinc-800/40"
+              title="Collapse Chat"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+          <Users className="h-4 w-4 text-zinc-400" />
+        </div>
+
+        <span className="font-display font-black text-white text-xs uppercase tracking-wider">Stream Chat</span>
+
+        <div className="flex items-center gap-1.5">
           <div
             data-testid="watts-counter"
-            className="inline-flex items-center gap-1 border border-[#e5ff00]/40 bg-[#e5ff00]/10 px-2 py-0.5 font-mono text-[10px] uppercase font-bold text-[#e5ff00] rounded-sm"
+            className="inline-flex items-center gap-1 border border-[#e5ff00]/40 bg-[#e5ff00]/10 px-2 py-0.5 font-mono text-[10px] uppercase font-bold text-[#e5ff00]"
           >
             <Zap className="h-3 w-3 fill-[#e5ff00]" />
             <span>{watts} WATTS</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {accruedNotice && (
-            <span className="animate-bounce font-mono text-[10px] font-bold text-[#e5ff00]">
-              {accruedNotice}
-            </span>
-          )}
-          <span
-            data-testid="chat-connection-status"
-            className={`hidden inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${
-              connected ? "text-[#e5ff00]" : "text-zinc-500"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 ${connected ? "bg-[#e5ff00] live-dot" : "bg-zinc-600"}`}
-            />
-            {connected ? "LIVE" : "CONNECTING…"}
-          </span>
         </div>
       </header>
 

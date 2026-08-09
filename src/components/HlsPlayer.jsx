@@ -486,7 +486,7 @@ function AudioVisualizer({ analyser, isMuted, isPlaying }) {
         const percent = value / 255;
         // Exponential scale to exaggerate mid-low frequencies elegantly
         const scaledPercent = Math.pow(percent, 0.85);
-        const barHeight = Math.max(3, scaledPercent * (h - 18));
+        const barHeight = Math.max(2, scaledPercent * (h - 4));
 
         // Create sleek high-tech vertical bar gradients
         const gradient = ctx.createLinearGradient(x, h, x, h - barHeight);
@@ -501,27 +501,10 @@ function AudioVisualizer({ analyser, isMuted, isPlaying }) {
 
         // Glowing fluorescent peak indicators
         ctx.fillStyle = "#e5ff00";
-        ctx.fillRect(x, Math.max(2, h - barHeight - 2), barWidth, 1.5);
+        ctx.fillRect(x, Math.max(1, h - barHeight - 1), barWidth, 1.5);
 
         x += barWidth + barSpacing;
       }
-
-      // Readout Text
-      ctx.fillStyle = "rgba(229, 255, 0, 0.75)";
-      ctx.font = "bold 8px monospace";
-      ctx.letterSpacing = "1px";
-      
-      const signalText = active && !isSilent 
-        ? "SIGNAL STATUS: ONLINE // CAPTURING LIVE AUDIO STREAM" 
-        : isPlaying && isMuted 
-          ? "SIGNAL STATUS: MUTED // RENDERING AMBIENT PREVIEW" 
-          : "SIGNAL STATUS: STANDBY // NO INPUT DETECTED";
-      
-      ctx.fillText(signalText, 12, 14);
-
-      ctx.textAlign = "right";
-      ctx.fillText("48.0 KHZ // STEREO DSP ANALYSER", w - 12, 14);
-      ctx.textAlign = "left";
     };
 
     draw();

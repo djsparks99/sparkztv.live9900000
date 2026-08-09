@@ -101,6 +101,16 @@ async function getFirestoreDocRest(collectionName: string, docId: string): Promi
         else if (valObj.integerValue !== undefined) data[key] = parseInt(valObj.integerValue, 10);
         else if (valObj.doubleValue !== undefined) data[key] = parseFloat(valObj.doubleValue);
         else if (valObj.timestampValue !== undefined) data[key] = valObj.timestampValue;
+        else if (valObj.arrayValue !== undefined) {
+          const arr = valObj.arrayValue.values || [];
+          data[key] = arr.map((item: any) => {
+            if (item.stringValue !== undefined) return item.stringValue;
+            if (item.booleanValue !== undefined) return item.booleanValue;
+            if (item.integerValue !== undefined) return parseInt(item.integerValue, 10);
+            if (item.doubleValue !== undefined) return parseFloat(item.doubleValue);
+            return null;
+          }).filter((x: any) => x !== null);
+        }
       }
       return { exists: true, data: () => data };
     }
@@ -135,6 +145,16 @@ async function getFirestoreCollectionRest(collectionName: string): Promise<any[]
             else if (valObj.integerValue !== undefined) data[key] = parseInt(valObj.integerValue, 10);
             else if (valObj.doubleValue !== undefined) data[key] = parseFloat(valObj.doubleValue);
             else if (valObj.timestampValue !== undefined) data[key] = valObj.timestampValue;
+            else if (valObj.arrayValue !== undefined) {
+              const arr = valObj.arrayValue.values || [];
+              data[key] = arr.map((item: any) => {
+                if (item.stringValue !== undefined) return item.stringValue;
+                if (item.booleanValue !== undefined) return item.booleanValue;
+                if (item.integerValue !== undefined) return parseInt(item.integerValue, 10);
+                if (item.doubleValue !== undefined) return parseFloat(item.doubleValue);
+                return null;
+              }).filter((x: any) => x !== null);
+            }
           }
         }
         docs.push({
@@ -554,6 +574,7 @@ interface ChannelDoc {
   last_updated: string;
   rtmp_url?: string;
   schedules?: any[];
+  tags?: string[];
 }
 
 class InMemStore {
@@ -724,6 +745,7 @@ async function syncChannelsFromFirestore() {
         last_updated: data.last_updated || new Date().toISOString(),
         rtmp_url: data.rtmp_url || "",
         schedules: data.schedules || [],
+        tags: data.tags || [],
       };
       
       db.channels.set(doc.id, channel);
@@ -796,6 +818,7 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
     last_updated: c.last_updated,
     schedules: c.schedules || [],
     schedule: c.schedules && c.schedules.length > 0 ? c.schedules[0] : null,
+    tags: c.tags || [],
   };
 
   if (opts.include_stream_key) {
@@ -1483,12 +1506,19 @@ async function startServer() {
       if (req.body?.thumbnail_url !== undefined) {
         channel.thumbnail_url = req.body.thumbnail_url;
       }
+      if (req.body?.tags !== undefined) {
+        if (!Array.isArray(req.body.tags)) {
+          return res.status(400).json({ error: "Tags must be an array of strings" });
+        }
+        channel.tags = req.body.tags;
+      }
       
       // Persist updated channel metadata securely in Firestore
       await setFirestoreDocSafe("channels", channel.channel_id || "djsparkz", {
         stream_title: channel.stream_title,
         category: channel.category,
         thumbnail_url: channel.thumbnail_url,
+        tags: channel.tags || [],
         last_updated: new Date().toISOString()
       }, true, (req as any).authToken);
 
