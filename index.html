@@ -49,9 +49,533 @@
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <!-- Force deployment update: 2026-08-03T16:50:00 -->
+        <style>
+            /* Preloader Premium Overlay styles */
+            #preloader-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: #000000;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+                font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                user-select: none;
+            }
+            .preloader-content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+            .neon-ring-wrapper {
+                position: relative;
+                width: 140px;
+                height: 140px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-bottom: 24px;
+            }
+            .neon-ring {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                border: 3px solid rgba(204, 255, 0, 0.08);
+                border-top: 3px solid #ccff00;
+                border-radius: 50%;
+                animation: spin-preloader 1.2s linear infinite;
+                box-shadow: 0 0 15px rgba(204, 255, 0, 0.4), inset 0 0 10px rgba(204, 255, 0, 0.1);
+            }
+            @keyframes spin-preloader {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .preloader-logo-img {
+                width: 70px;
+                height: 70px;
+                object-fit: contain;
+                z-index: 2;
+            }
+            .logo-fallback {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 2;
+            }
+            .logo-svg {
+                width: 55px;
+                height: 55px;
+                filter: drop-shadow(0 0 8px rgba(204, 255, 0, 0.6));
+            }
+            .logo-text {
+                font-size: 11px;
+                font-weight: 900;
+                color: #ccff00;
+                letter-spacing: 5px;
+                margin-top: 6px;
+                margin-left: 5px;
+                text-shadow: 0 0 5px rgba(204, 255, 0, 0.5);
+            }
+            .preloader-equalizer {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 5px;
+                height: 32px;
+                margin-bottom: 28px;
+            }
+            .eq-bar {
+                width: 4px;
+                height: 10%;
+                background-color: #ccff00;
+                box-shadow: 0 0 8px rgba(204, 255, 0, 0.6);
+                border-radius: 2px;
+                animation: eq-bounce 1s ease-in-out infinite alternate;
+            }
+            .eq-bar:nth-child(1) { animation-delay: 0.1s; animation-duration: 0.7s; }
+            .eq-bar:nth-child(2) { animation-delay: 0.3s; animation-duration: 0.45s; }
+            .eq-bar:nth-child(3) { animation-delay: 0.15s; animation-duration: 0.65s; }
+            .eq-bar:nth-child(4) { animation-delay: 0.4s; animation-duration: 0.55s; }
+            .eq-bar:nth-child(5) { animation-delay: 0.2s; animation-duration: 0.75s; }
+            .eq-bar:nth-child(6) { animation-delay: 0.35s; animation-duration: 0.45s; }
+            .eq-bar:nth-child(7) { animation-delay: 0.05s; animation-duration: 0.6s; }
+            .eq-bar:nth-child(8) { animation-delay: 0.25s; animation-duration: 0.5s; }
+
+            @keyframes eq-bounce {
+                0% { height: 15%; }
+                100% { height: 100%; }
+            }
+            .preloader-text {
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 4px;
+                color: #ccff00;
+                text-align: center;
+                padding: 0 20px;
+                text-shadow: 0 0 10px rgba(204, 255, 0, 0.5);
+                animation: text-glow 1.5s ease-in-out infinite alternate;
+            }
+            @keyframes text-glow {
+                0% { opacity: 0.65; text-shadow: 0 0 8px rgba(204, 255, 0, 0.3); }
+                100% { opacity: 1; text-shadow: 0 0 16px rgba(204, 255, 0, 0.8); }
+            }
+            #shatter-canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 10000;
+                pointer-events: none;
+                display: none;
+            }
+        </style>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
+        
+        <!-- Preloader Layout overlay -->
+        <div id="preloader-overlay">
+            <div class="preloader-content">
+                <div class="neon-ring-wrapper">
+                    <div class="neon-ring"></div>
+                    <svg viewBox="0 0 100 100" style="width: 70px; height: 70px; z-index: 2; filter: drop-shadow(0 0 8px rgba(204, 255, 0, 0.6));">
+                        <!-- Yellow Speech Bubble Body with tail -->
+                        <path d="M 20 25 
+                                 A 12 12 0 0 1 32 13 
+                                 L 68 13 
+                                 A 12 12 0 0 1 80 25 
+                                 L 80 65 
+                                 A 12 12 0 0 1 68 77 
+                                 L 38 77 
+                                 L 24 88 
+                                 C 22 89.5, 20 88, 20 85 
+                                 L 20 77 
+                                 A 12 12 0 0 1 20 25 Z" 
+                              fill="#e2ff3b" 
+                              stroke="#0d0d0d" 
+                              stroke-width="5" 
+                              stroke-linejoin="round" 
+                              stroke-linecap="round"/>
+                        
+                        <!-- Left Eye -->
+                        <circle cx="38" cy="46" r="8" fill="#0d0d0d"/>
+                        <!-- Left Eye Highlights -->
+                        <circle cx="36" cy="43" r="2.5" fill="#ffffff"/>
+                        <circle cx="41" cy="49" r="1.2" fill="#ffffff"/>
+
+                        <!-- Right Eye -->
+                        <circle cx="62" cy="46" r="8" fill="#0d0d0d"/>
+                        <!-- Right Eye Highlights -->
+                        <circle cx="60" cy="43" r="2.5" fill="#ffffff"/>
+                        <circle cx="65" cy="49" r="1.2" fill="#ffffff"/>
+                    </svg>
+                </div>
+                
+                <div class="preloader-equalizer">
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                </div>
+                
+                <div class="preloader-text">Please wait, we are loading the underground</div>
+            </div>
+        </div>
+
+        <!-- Glass Shatter canvas component -->
+        <canvas id="shatter-canvas"></canvas>
+
+        <script>
+            (function() {
+                const preloaderStartTime = Date.now();
+                const MIN_DURATION = 4000; // 4 seconds minimum display duration
+                let shattered = false;
+
+                function startShatter() {
+                    if (shattered) return;
+                    shattered = true;
+
+                    const overlay = document.getElementById('preloader-overlay');
+                    const canvas = document.getElementById('shatter-canvas');
+                    if (!overlay || !canvas) return;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        overlay.parentNode.removeChild(overlay);
+                        return;
+                    }
+
+                    const dpr = window.devicePixelRatio || 1;
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+
+                    canvas.width = width * dpr;
+                    canvas.height = height * dpr;
+                    canvas.style.width = width + 'px';
+                    canvas.style.height = height + 'px';
+                    ctx.scale(dpr, dpr);
+
+                    // Create offscreen canvas representing static snapshots
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = width * dpr;
+                    offscreen.height = height * dpr;
+                    const octx = offscreen.getContext('2d');
+                    octx.scale(dpr, dpr);
+
+                    // Draw beautiful preloader representation to offscreen canvas
+                    octx.fillStyle = '#000000';
+                    octx.fillRect(0, 0, width, height);
+
+                    // Draw glowing ring
+                    octx.save();
+                    octx.translate(width / 2, height / 2 - 40);
+                    octx.shadowColor = '#ccff00';
+                    octx.shadowBlur = 25;
+                    octx.strokeStyle = '#ccff00';
+                    octx.lineWidth = 3;
+                    octx.beginPath();
+                    octx.arc(0, 0, 70, 0, 2 * Math.PI);
+                    octx.stroke();
+                    octx.restore();
+
+                    // Draw yellow speech bubble with cute eyes on canvas
+                    octx.save();
+                    octx.translate(width / 2, height / 2 - 40);
+                    
+                    octx.shadowColor = '#ccff00';
+                    octx.shadowBlur = 12;
+                    octx.strokeStyle = '#0d0d0d';
+                    octx.lineWidth = 4;
+                    octx.fillStyle = '#e2ff3b';
+                    octx.lineJoin = 'round';
+                    octx.lineCap = 'round';
+                    
+                    // Speech bubble body path
+                    octx.beginPath();
+                    if (octx.roundRect) {
+                        octx.roundRect(-30, -30, 60, 60, 10);
+                    } else {
+                        octx.rect(-30, -30, 60, 60);
+                    }
+                    octx.fill();
+                    octx.stroke();
+
+                    // The talk tail
+                    octx.beginPath();
+                    octx.moveTo(-18, 25);
+                    octx.lineTo(-28, 36);
+                    octx.lineTo(-6, 28);
+                    octx.closePath();
+                    octx.fillStyle = '#e2ff3b';
+                    octx.fill();
+                    octx.stroke();
+
+                    // Draw eyes
+                    octx.fillStyle = '#0d0d0d';
+                    octx.shadowBlur = 0; // Turn off shadow blur for eyes for crisp look
+                    
+                    // Left eye
+                    octx.beginPath();
+                    octx.arc(-11, 4, 6.5, 0, Math.PI * 2);
+                    octx.fill();
+                    // Left eye glints
+                    octx.fillStyle = '#ffffff';
+                    octx.beginPath();
+                    octx.arc(-12.5, 1.5, 2, 0, Math.PI * 2);
+                    octx.fill();
+                    octx.beginPath();
+                    octx.arc(-9, 6, 0.9, 0, Math.PI * 2);
+                    octx.fill();
+
+                    // Right eye
+                    octx.fillStyle = '#0d0d0d';
+                    octx.beginPath();
+                    octx.arc(11, 4, 6.5, 0, Math.PI * 2);
+                    octx.fill();
+                    // Right eye glints
+                    octx.fillStyle = '#ffffff';
+                    octx.beginPath();
+                    octx.arc(9.5, 1.5, 2, 0, Math.PI * 2);
+                    octx.fill();
+                    octx.beginPath();
+                    octx.arc(13, 6, 0.9, 0, Math.PI * 2);
+                    octx.fill();
+
+                    // Text under the logo
+                    octx.fillStyle = '#ccff00';
+                    octx.shadowColor = '#ccff00';
+                    octx.shadowBlur = 10;
+                    octx.font = '900 11px "Inter", system-ui, sans-serif';
+                    octx.textAlign = 'center';
+                    octx.fillText('SPARKZ', 0, 48);
+                    octx.restore();
+
+                    // Draw audio equalizer bars
+                    octx.save();
+                    octx.translate(width / 2 - 38, height / 2 + 50);
+                    octx.shadowColor = '#ccff00';
+                    octx.shadowBlur = 10;
+                    octx.fillStyle = '#ccff00';
+                    const barHeights = [14, 25, 12, 28, 18, 22, 10, 20];
+                    for (let i = 0; i < 8; i++) {
+                        octx.fillRect(i * 10, 30 - barHeights[i], 4, barHeights[i]);
+                    }
+                    octx.restore();
+
+                    // Draw vibrant neon fluorescent text
+                    octx.save();
+                    octx.translate(width / 2, height / 2 + 130);
+                    octx.shadowColor = '#ccff00';
+                    octx.shadowBlur = 15;
+                    octx.fillStyle = '#ccff00';
+                    octx.font = '600 12px "Inter", system-ui, sans-serif';
+                    octx.textAlign = 'center';
+                    octx.fillText('PLEASE WAIT, WE ARE LOADING THE UNDERGROUND', 0, 0);
+                    octx.restore();
+
+                    // Generate physics-based glass shards (triangles)
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    
+                    // Ring radii for concentric shattered zones
+                    const rings = [0, 40, 100, 220, 450, 750, Math.max(width, height) * 0.9];
+                    const sectors = 18;
+                    const shards = [];
+
+                    for (let r = 0; r < rings.length - 1; r++) {
+                        const rInner = rings[r];
+                        const rOuter = rings[r + 1];
+                        for (let s = 0; s < sectors; s++) {
+                            const a1 = s * (2 * Math.PI / sectors);
+                            const a2 = (s + 1) * (2 * Math.PI / sectors);
+
+                            const noiseAngle = () => (Math.random() - 0.5) * 0.08;
+                            const noiseRadius = () => (Math.random() - 0.5) * 12;
+
+                            const p1_ang = a1 + noiseAngle();
+                            const p1_rad = rInner + (rInner > 0 ? noiseRadius() : 0);
+                            const p1 = {
+                                x: centerX + p1_rad * Math.cos(p1_ang),
+                                y: centerY + p1_rad * Math.sin(p1_ang)
+                            };
+
+                            const p2_ang = a2 + noiseAngle();
+                            const p2_rad = rInner + (rInner > 0 ? noiseRadius() : 0);
+                            const p2 = {
+                                x: centerX + p2_rad * Math.cos(p2_ang),
+                                y: centerY + p2_rad * Math.sin(p2_ang)
+                            };
+
+                            const p3_ang = a1 + noiseAngle();
+                            const p3_rad = rOuter + noiseRadius();
+                            const p3 = {
+                                x: centerX + p3_rad * Math.cos(p3_ang),
+                                y: centerY + p3_rad * Math.sin(p3_ang)
+                            };
+
+                            const p4_ang = a2 + noiseAngle();
+                            const p4_rad = rOuter + noiseRadius();
+                            const p4 = {
+                                x: centerX + p4_rad * Math.cos(p4_ang),
+                                y: centerY + p4_rad * Math.sin(p4_ang)
+                            };
+
+                            if (r === 0) {
+                                shards.push(createShard({ x: centerX, y: centerY }, p4, p3));
+                            } else {
+                                shards.push(createShard(p1, p2, p4));
+                                shards.push(createShard(p1, p4, p3));
+                            }
+                        }
+                    }
+
+                    function createShard(p1, p2, p3) {
+                        const cx = (p1.x + p2.x + p3.x) / 3;
+                        const cy = (p1.y + p2.y + p3.y) / 3;
+
+                        const dx = cx - centerX;
+                        const dy = cy - centerY;
+                        const angle = Math.atan2(dy, dx);
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        const baseSpeed = 1.8 + Math.random() * 3.5;
+                        const forceMultiplier = 1.0 + 180 / (dist + 35);
+                        const speed = baseSpeed * forceMultiplier;
+
+                        const vx = Math.cos(angle) * speed + (Math.random() - 0.5) * 1.5;
+                        const vy = Math.sin(angle) * speed + (Math.random() - 0.5) * 1.5;
+
+                        return {
+                            relP1: { x: p1.x - cx, y: p1.y - cy },
+                            relP2: { x: p2.x - cx, y: p2.y - cy },
+                            relP3: { x: p3.x - cx, y: p3.y - cy },
+                            cx,
+                            cy,
+                            vx,
+                            vy,
+                            rotation: 0,
+                            vRot: (Math.random() - 0.5) * 0.12,
+                            gravity: 0.16 + Math.random() * 0.14,
+                            friction: 0.985
+                        };
+                    }
+
+                    // Toggle overlay to canvas shatter view
+                    overlay.style.display = 'none';
+                    canvas.style.display = 'block';
+
+                    const duration = 1400; // 1.4 seconds physics animation
+                    const startTime = performance.now();
+
+                    function animate(now) {
+                        const elapsed = now - startTime;
+                        const progress = elapsed / duration;
+
+                        if (progress >= 1) {
+                            if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+                            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                            return;
+                        }
+
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(0, 0, width, height);
+
+                        let alpha = 1.0;
+                        if (progress > 0.75) {
+                            alpha = (1.0 - progress) / 0.25;
+                        }
+
+                        ctx.save();
+                        ctx.globalAlpha = alpha;
+
+                        shards.forEach(s => {
+                            s.vx *= s.friction;
+                            s.vy *= s.friction;
+                            s.vy += s.gravity;
+                            s.cx += s.vx;
+                            s.cy += s.vy;
+                            s.rotation += s.vRot;
+
+                            const cos = Math.cos(s.rotation);
+                            const sin = Math.sin(s.rotation);
+
+                            const getRot = (p) => {
+                                return {
+                                    x: s.cx + (p.x * cos - p.y * sin),
+                                    y: s.cy + (p.x * sin + p.y * cos)
+                                };
+                            };
+
+                            const r1 = getRot(s.relP1);
+                            const r2 = getRot(s.relP2);
+                            const r3 = getRot(s.relP3);
+
+                            // Shard clip rendering
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(r1.x, r1.y);
+                            ctx.lineTo(r2.x, r2.y);
+                            ctx.lineTo(r3.x, r3.y);
+                            ctx.closePath();
+                            ctx.clip();
+
+                            ctx.drawImage(offscreen, 0, 0, width, height);
+                            ctx.restore();
+
+                            // Premium sharp glass highlighted edge stroke
+                            ctx.beginPath();
+                            ctx.moveTo(r1.x, r1.y);
+                            ctx.lineTo(r2.x, r2.y);
+                            ctx.lineTo(r3.x, r3.y);
+                            ctx.closePath();
+                            ctx.strokeStyle = `rgba(204, 255, 0, ${0.45 * alpha})`;
+                            ctx.lineWidth = 0.9;
+                            ctx.stroke();
+                        });
+
+                        ctx.restore();
+                        requestAnimationFrame(animate);
+                    }
+
+                    requestAnimationFrame(animate);
+                }
+
+                // Function to schedule the shatter transition after the minimum display duration
+                let loadTriggered = false;
+                function triggerShatterWhenReady() {
+                    if (loadTriggered) return;
+                    loadTriggered = true;
+                    
+                    const elapsed = Date.now() - preloaderStartTime;
+                    const remaining = Math.max(0, MIN_DURATION - elapsed);
+                    
+                    setTimeout(startShatter, remaining);
+                }
+
+                // Bind window load triggers with minimum duration logic and robust safety fallback
+                if (document.readyState === 'complete') {
+                    triggerShatterWhenReady();
+                } else {
+                    window.addEventListener('load', triggerShatterWhenReady);
+                }
+                
+                // Maximum safety timeout at 6 seconds
+                setTimeout(triggerShatterWhenReady, 6000);
+            })();
+        </script>
         <div id="root"></div>
         <script type="module" src="/src/main.jsx"></script>
         <!--

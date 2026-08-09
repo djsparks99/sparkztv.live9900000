@@ -667,6 +667,76 @@ async function syncStoriesFromFirestore() {
   }
 }
 
+async function syncUsersFromFirestore() {
+  try {
+    const docs = await getFirestoreCollectionSafe("users");
+    for (const doc of docs) {
+      const data = doc.data();
+      if (!data) continue;
+      db.users.set(doc.id, {
+        uid: doc.id,
+        email: data.email || "",
+        username: data.username || "",
+        display_name: data.display_name || "",
+        photo_url: data.photo_url || data.photoUrl || null,
+        bio: data.bio || "",
+        password_hash: data.password_hash || "",
+        created_at: data.created_at || new Date().toISOString(),
+        watts: data.watts !== undefined ? data.watts : 100,
+        follows: data.follows || [],
+        vinyl_bits: data.vinyl_bits || 0,
+        accumulated_bits_balance: data.accumulated_bits_balance || 0,
+        stripe_connect_id: data.stripe_connect_id || null,
+        stripe_connect_status: data.stripe_connect_status || null,
+        payout_method: data.payout_method || null,
+        payout_details: data.payout_details || null,
+        social_share_image_url: data.social_share_image_url || null,
+      });
+    }
+    console.log(`[Users Sync] Synced ${db.users.size} users from Firestore.`);
+  } catch (err: any) {
+    console.warn("[Users Sync] Error syncing users from Firestore:", err.message);
+  }
+}
+
+async function syncChannelsFromFirestore() {
+  try {
+    const docs = await getFirestoreCollectionSafe("channels");
+    for (const doc of docs) {
+      const data = doc.data();
+      if (!data) continue;
+      
+      const channel: ChannelDoc = {
+        channel_id: data.channel_id || doc.id,
+        user_uid: data.user_uid || "",
+        username: data.username || "",
+        display_name: data.display_name || "",
+        photo_url: data.photo_url || data.photoUrl || null,
+        thumbnail_url: data.thumbnail_url || null,
+        ivs_channel_arn: data.ivs_channel_arn || "",
+        stream_key: data.stream_key || "",
+        playback_id: data.playback_id || data.playbackId || "",
+        stream_title: data.stream_title || "",
+        category: data.category || "music",
+        is_live: data.is_live !== undefined ? data.is_live : false,
+        viewer_count: data.viewer_count !== undefined ? data.viewer_count : 0,
+        record_enabled: data.record_enabled !== undefined ? data.record_enabled : true,
+        last_updated: data.last_updated || new Date().toISOString(),
+        rtmp_url: data.rtmp_url || "",
+        schedules: data.schedules || [],
+      };
+      
+      db.channels.set(doc.id, channel);
+      if (channel.username) {
+        db.channels.set(channel.username, channel);
+      }
+    }
+    console.log(`[Channels Sync] Synced ${db.channels.size} channels from Firestore.`);
+  } catch (err: any) {
+    console.warn("[Channels Sync] Error syncing channels from Firestore:", err.message);
+  }
+}
+
 const DUMMY_USERNAMES = [
   "pirate_fm", "acid_vault", "dub_station", "test", "demo", "undefined", "null", "dummy", "user", "channel"
 ];
@@ -838,9 +908,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 async function startServer() {
   db.channels.clear();
-  getMasterChannel().catch((err) => {
-    console.warn("Failed to pre-warm master channel in background:", err.message);
-  });
+  
+  // Load persisted Firestore records FIRST, then load master channel in background
+  syncUsersFromFirestore()
+    .then(() => syncChannelsFromFirestore())
+    .then(() => {
+      getMasterChannel().catch((err) => {
+        console.warn("Failed to pre-warm master channel in background:", err.message);
+      });
+    })
+    .catch((err) => {
+      console.warn("Failed to sync users/channels from Firestore on startup:", err.message);
+    });
+
   syncStoriesFromFirestore().catch((err) => {
     console.warn("Failed to pre-warm stories from Firestore:", err.message);
   });
@@ -1023,18 +1103,56 @@ async function startServer() {
       req.authToken = null;
       let user = db.users.get(fallbackUid);
       if (!user) {
-        user = {
-          uid: fallbackUid,
-          email: "djsparkz@sparkz.tv",
-          username: "djsparkz",
-          display_name: "djsparkz",
-          photo_url: null,
-          bio: "Broadcasting live and loud on SPARKZ.TV",
-          password_hash: "",
-          created_at: new Date().toISOString(),
-          watts: 2500,
-          follows: [],
-        };
+        // Try fetching fallback user from Firestore first
+        try {
+          const docSnap = await getFirestoreDocSafe("users", fallbackUid);
+          if (docSnap && docSnap.exists) {
+            const firestoreUser = docSnap.data();
+            if (firestoreUser) {
+              user = {
+                uid: fallbackUid,
+                email: firestoreUser.email || "djsparkz@sparkz.tv",
+                username: firestoreUser.username || "djsparkz",
+                display_name: firestoreUser.display_name || "djsparkz",
+                photo_url: firestoreUser.photo_url || firestoreUser.photoUrl || null,
+                bio: firestoreUser.bio || "Broadcasting live and loud on SPARKZ.TV",
+                password_hash: firestoreUser.password_hash || "",
+                created_at: firestoreUser.created_at || new Date().toISOString(),
+                watts: firestoreUser.watts !== undefined ? firestoreUser.watts : 2500,
+                follows: firestoreUser.follows || [],
+                vinyl_bits: firestoreUser.vinyl_bits || 0,
+                accumulated_bits_balance: firestoreUser.accumulated_bits_balance || 0,
+                stripe_connect_id: firestoreUser.stripe_connect_id || null,
+                stripe_connect_status: firestoreUser.stripe_connect_status || null,
+                payout_method: firestoreUser.payout_method || null,
+                payout_details: firestoreUser.payout_details || null,
+                social_share_image_url: firestoreUser.social_share_image_url || null,
+              };
+            }
+          }
+        } catch (err: any) {
+          console.warn("[Auth Middleware] Failed to fetch fallback user from Firestore:", err.message);
+        }
+
+        if (!user) {
+          user = {
+            uid: fallbackUid,
+            email: "djsparkz@sparkz.tv",
+            username: "djsparkz",
+            display_name: "djsparkz",
+            photo_url: null,
+            bio: "Broadcasting live and loud on SPARKZ.TV",
+            password_hash: "",
+            created_at: new Date().toISOString(),
+            watts: 2500,
+            follows: [],
+          };
+          try {
+            await setFirestoreDocSafe("users", fallbackUid, user, true);
+          } catch (e) {
+            console.warn("[Auth Middleware] Failed to save fallback user to Firestore:", e);
+          }
+        }
         db.users.set(fallbackUid, user);
       }
       req.user = user;
@@ -1055,20 +1173,58 @@ async function startServer() {
 
       let user = db.users.get(uid);
       if (!user) {
-        const email = decodedToken.email || "";
-        const isDjSparkz = email === "markysparks99@gmail.com";
-        user = {
-          uid,
-          email,
-          username: isDjSparkz ? "djsparkz" : (email.split("@")[0] || "user"),
-          display_name: isDjSparkz ? "djsparkz" : (decodedToken.name || email.split("@")[0] || "User"),
-          photo_url: decodedToken.picture || null,
-          bio: isDjSparkz ? "Broadcasting live and loud on SPARKZ.TV" : "",
-          password_hash: "",
-          created_at: new Date().toISOString(),
-          watts: isDjSparkz ? 2500 : 100,
-          follows: [],
-        };
+        // Try fetching user from Firestore first
+        try {
+          const docSnap = await getFirestoreDocSafe("users", uid);
+          if (docSnap && docSnap.exists) {
+            const firestoreUser = docSnap.data();
+            if (firestoreUser) {
+              user = {
+                uid,
+                email: firestoreUser.email || decodedToken.email || "",
+                username: firestoreUser.username || (firestoreUser.email || decodedToken.email || "").split("@")[0] || "user",
+                display_name: firestoreUser.display_name || decodedToken.name || (firestoreUser.email || decodedToken.email || "").split("@")[0] || "User",
+                photo_url: firestoreUser.photo_url || firestoreUser.photoUrl || decodedToken.picture || null,
+                bio: firestoreUser.bio || "",
+                password_hash: firestoreUser.password_hash || "",
+                created_at: firestoreUser.created_at || new Date().toISOString(),
+                watts: firestoreUser.watts !== undefined ? firestoreUser.watts : (firestoreUser.email === "markysparks99@gmail.com" ? 2500 : 100),
+                follows: firestoreUser.follows || [],
+                vinyl_bits: firestoreUser.vinyl_bits || 0,
+                accumulated_bits_balance: firestoreUser.accumulated_bits_balance || 0,
+                stripe_connect_id: firestoreUser.stripe_connect_id || null,
+                stripe_connect_status: firestoreUser.stripe_connect_status || null,
+                payout_method: firestoreUser.payout_method || null,
+                payout_details: firestoreUser.payout_details || null,
+                social_share_image_url: firestoreUser.social_share_image_url || null,
+              };
+            }
+          }
+        } catch (err: any) {
+          console.warn("[Auth Middleware] Failed to fetch user from Firestore:", err.message);
+        }
+
+        if (!user) {
+          const email = decodedToken.email || "";
+          const isDjSparkz = email === "markysparks99@gmail.com";
+          user = {
+            uid,
+            email,
+            username: isDjSparkz ? "djsparkz" : (email.split("@")[0] || "user"),
+            display_name: isDjSparkz ? "djsparkz" : (decodedToken.name || email.split("@")[0] || "User"),
+            photo_url: decodedToken.picture || null,
+            bio: isDjSparkz ? "Broadcasting live and loud on SPARKZ.TV" : "",
+            password_hash: "",
+            created_at: new Date().toISOString(),
+            watts: isDjSparkz ? 2500 : 100,
+            follows: [],
+          };
+          try {
+            await setFirestoreDocSafe("users", uid, user, true, token);
+          } catch (e) {
+            console.warn("[Auth Middleware] Failed to save user to Firestore:", e);
+          }
+        }
         db.users.set(uid, user);
       }
 
@@ -1241,6 +1397,7 @@ async function startServer() {
         if (user.uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
           const channel = await getMasterChannel();
           channel.display_name = req.body.display_name;
+          await setFirestoreDocSafe("channels", "djsparkz", { display_name: req.body.display_name }, true, req.authToken);
         }
       }
       if (req.body?.bio !== undefined) {
@@ -1251,6 +1408,15 @@ async function startServer() {
         user.social_share_image_url = saveBase64ToUploads(req.body.social_share_image_url);
         db.users.set(user.uid, user);
       }
+
+      // Write updated profile back to Firestore securely
+      await setFirestoreDocSafe("users", user.uid, {
+        display_name: user.display_name,
+        bio: user.bio,
+        social_share_image_url: user.social_share_image_url || null,
+        photo_url: user.photo_url || null,
+        last_updated: new Date().toISOString()
+      }, true, req.authToken);
 
       return res.json({
         ...user,
@@ -1318,6 +1484,14 @@ async function startServer() {
         channel.thumbnail_url = req.body.thumbnail_url;
       }
       
+      // Persist updated channel metadata securely in Firestore
+      await setFirestoreDocSafe("channels", channel.channel_id || "djsparkz", {
+        stream_title: channel.stream_title,
+        category: channel.category,
+        thumbnail_url: channel.thumbnail_url,
+        last_updated: new Date().toISOString()
+      }, true, (req as any).authToken);
+
       return res.json(channelPublic(channel, { include_stream_key: true }));
     } catch (err: any) {
       return res.status(500).json({ error: "Failed to update channel", details: err.message });
@@ -2238,7 +2412,14 @@ async function startServer() {
       if (user.uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
         const channel = await getMasterChannel();
         channel.photo_url = photoUrl;
+        await setFirestoreDocSafe("channels", "djsparkz", { photo_url: photoUrl }, true, req.authToken);
       }
+
+      // Persist the updated avatar/photo in Firestore securely
+      await setFirestoreDocSafe("users", user.uid, {
+        photo_url: photoUrl,
+        last_updated: new Date().toISOString()
+      }, true, req.authToken);
 
       return res.json({
         success: true,
@@ -2282,6 +2463,12 @@ async function startServer() {
 
       user.social_share_image_url = socialShareUrl;
       db.users.set(user.uid, user);
+
+      // Persist updated social share image in Firestore securely
+      await setFirestoreDocSafe("users", user.uid, {
+        social_share_image_url: socialShareUrl,
+        last_updated: new Date().toISOString()
+      }, true, req.authToken);
 
       return res.json({
         success: true,
