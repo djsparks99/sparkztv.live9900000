@@ -453,7 +453,7 @@ export default function ChatPanel({ username }) {
   return (
     <div
       data-testid="chat-panel"
-      className="relative flex h-[580px] flex-col border border-[#27272a] bg-[#0a0a0a]"
+      className="relative flex h-full lg:h-[580px] flex-col border border-[#27272a] bg-[#0a0a0a]"
     >
       {/* Header */}
       <header className="flex items-center justify-between border-b border-[#27272a] px-4 py-3 bg-[#0d0d0e]">

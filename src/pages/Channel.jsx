@@ -290,6 +290,14 @@ export default function Channel() {
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <HlsPlayer playbackId={channel.playback_id} isLive={isLive} />
+            
+            {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
+            <div className="block lg:hidden w-full border border-[#27272a] bg-[#0a0a0a] mt-2">
+              <div className="h-[400px] sm:h-[485px]">
+                <ChatPanel username={channel.username} />
+              </div>
+            </div>
+
             <div className="flex justify-end">
               <button
                 onClick={() => setIsReportModalOpen(true)}
@@ -377,11 +385,6 @@ export default function Channel() {
                 </Link>
               </div>
             </div>
-          </div>
-
-          {/* MOBILE CHAT PLACEMENT: Appears directly under video/meta card on mobile/tablet */}
-          <div className="block lg:hidden w-full">
-            <ChatPanel username={channel.username} />
           </div>
 
           {/* Schedule */}

@@ -259,7 +259,7 @@ export default function StreamCarousel({ allChannels = [], channels = [], isLoad
       {/* Header Container */}
       <div className="relative mx-auto max-w-[1440px] px-6 pt-8 pb-4 flex flex-col items-center">
         {/* Centered Bannersnack Leaderboard Ad Container */}
-        <div className="w-full flex flex-col items-center justify-center mb-6">
+        <div className="hidden md:flex w-full flex-col items-center justify-center mb-6">
           <div className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#e5ff00]/60 mb-2 text-center">// SPARKZ BROADCAST NETWORK // AD TRANSMISSION</div>
           <div className="w-full max-w-[728px] overflow-x-auto scrollbar-none flex justify-center">
             <div 
