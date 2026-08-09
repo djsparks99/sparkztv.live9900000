@@ -306,190 +306,14 @@ export default function Channel() {
 
       {/* Row 1: Player & Chat Panel */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch mb-6">
-        {/* Left Column: Player & Metadata Bar */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
+        {/* Left Column: Player only */}
+        <div className="flex-1 min-w-0">
           <HlsPlayer playbackId={channel.playback_id} isLive={isLive} />
-
-          {/* CHANNEL METADATA BAR - Directly under the player wrapper in a single horizontal strip */}
-          {(() => {
-            const avatarUrl = channel?.photo_url || 
-                              channel?.photoUrl || 
-                              channel?.avatar_url || 
-                              channel?.avatar || 
-                              channel?.profile_image || 
-                              channel?.broadcaster_avatar || 
-                              channel?.user?.avatar_url || 
-                              channel?.user?.photo_url || 
-                              channel?.user?.photoUrl || 
-                              channel?.user?.avatar ||
-                              channel?.user?.profile_image ||
-                              channel?.user?.broadcaster_avatar;
-
-            const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
-
-            const initials = (() => {
-              const name = channel?.display_name || channel?.username || username || "?";
-              const cleanName = typeof name === "string" ? name.trim() : "?";
-              const parts = cleanName.split(/\s+/);
-              if (parts.length >= 2 && parts[0] && parts[1]) {
-                return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
-              }
-              return cleanName.slice(0, 2).toUpperCase();
-            })();
-
-            return (
-              <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
-                {isLive && (
-                  <div className="absolute top-4 right-4 md:top-5 md:right-5 flex items-center gap-3.5 font-mono text-xs font-bold z-10" data-testid="live-viewer-uptime">
-                    <div className="flex items-center gap-1 text-[#ff5c5c]">
-                      <User className="h-4 w-4" />
-                      <span>{channel.viewer_count || 0}</span>
-                    </div>
-                    <div className="text-white">
-                      {channel.stream_started_at ? (
-                        <LiveDuration startedAt={channel.stream_started_at} />
-                      ) : (
-                        "00:00:00"
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  {/* Left Column: Avatar + Profile details */}
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    {/* Spherically-bounded avatar container */}
-                    <div className="h-14 w-14 md:h-16 md:w-16 rounded-full border-2 border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
-                      {resolvedAvatar ? (
-                        <img 
-                          src={resolvedAvatar} 
-                          alt={channel.username} 
-                          className="h-full w-full object-cover rounded-full"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-[#1e1e22] text-[#e4e4e7] rounded-full font-mono text-base font-black select-none uppercase">
-                          {initials}
-                        </div>
-                      )}
-                      {/* Live/Offline status indicator on avatar */}
-                      {isLive && (
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#e5ff00] border-2 border-[#0e0e10]" />
-                      )}
-                    </div>
-
-                    {/* Text Area */}
-                    <div className="min-w-0 flex-1 pr-24 lg:pr-32">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h1 className="font-display text-base font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1.5">
-                          <span>@{channel.username || username}</span>
-                          <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#9146ff] text-white" title="Verified Sparkz Partner">
-                            <Check className="h-2.5 w-2.5 stroke-[4]" />
-                          </span>
-                        </h1>
-                        
-                        {isLive ? (
-                          <span className="live-badge !py-0.5 !px-1.5 text-[9px] font-bold uppercase tracking-wider bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20">
-                            <span className="dot live-dot bg-[#e5ff00]" /> LIVE
-                          </span>
-                        ) : (
-                          <span className="chip !py-0.5 !px-1.5 text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border-zinc-700">
-                            OFFLINE
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Stream Title / Custom description */}
-                      <h2 className="font-sans text-sm font-semibold leading-snug text-zinc-100 mb-1.5">
-                        {channel.stream_title || "Welcome to my underground broadcast"}
-                      </h2>
-
-                      {/* Metadata row */}
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-zinc-400">
-                        {channel.category && (
-                          <Link to="/browse" className="text-[#bf94ff] hover:underline font-bold uppercase tracking-wider">
-                            {channel.category}
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
-                  <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end lg:mt-5">
-                    <FollowButton
-                      username={channel.username}
-                      isFollowing={channel.is_following}
-                      followerCount={channel.follower_count}
-                      ownChannel={ownChannel}
-                      onChange={(res) =>
-                        setChannel((prev) => ({
-                          ...prev,
-                          is_following: res.following,
-                          follower_count: res.follower_count,
-                        }))
-                      }
-                    />
-
-
-
-                    <Link
-                      to="/payouts?buy=true"
-                      data-testid="channel-buy-bits-btn"
-                      className="flex items-center gap-1.5 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
-                      title="Purchase Vinyl Bits to Support DJ"
-                    >
-                      <Coins className="h-4 w-4 text-[#e5ff00] animate-pulse" />
-                      <span>BUY BITS</span>
-                    </Link>
-
-                    <ShareButton
-                      username={channel.username}
-                      streamTitle={channel.stream_title}
-                    />
-                    
-                    <button
-                      onClick={() => setIsReportModalOpen(true)}
-                      className="btn-ghost inline-flex items-center gap-2 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-2 !px-3"
-                      title="Report this broadcast"
-                    >
-                      <Flag className="h-3.5 w-3.5" />
-                      <span className="font-mono text-xs uppercase tracking-wider">REPORT</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* BOTTOM MUSIC GENRE TAG CONTAINER - Under the player metadata, display their own genre music tags */}
-                {channel.tags && channel.tags.length > 0 && (
-                  <div className="mt-4 pt-3.5 border-t border-[#27272a]/60">
-                    <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2">// GENRE / STYLE TARGETS:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {channel.tags.map((tag, idx) => (
-                        <Link
-                          key={idx}
-                          to={`/browse?search=${encodeURIComponent(tag)}`}
-                          className="inline-flex items-center px-3 py-1 bg-zinc-900 hover:bg-[#e5ff00] border border-zinc-700/85 hover:border-[#e5ff00] text-xs font-mono text-zinc-300 hover:text-black transition-all rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                        >
-                          #{tag.toUpperCase()}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* MOBILE CHAT PLACEMENT: Sits directly under the video player metadata on mobile views */}
-          <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10] mt-2">
-            <div className="h-[400px] sm:h-[485px]">
-              <ChatPanel username={channel.username} />
-            </div>
-          </div>
         </div>
 
-        {/* Right Column: Desktop Collapsible Chat (Matches player column height perfectly) */}
+        {/* Right Column: Desktop Collapsible Chat (Matches player height perfectly) */}
         {!isChatCollapsed ? (
-          <aside className="hidden lg:flex w-[320px] xl:w-[360px] flex-col shrink-0 h-auto min-h-[550px] transition-all duration-300">
+          <aside className="hidden lg:flex w-[320px] xl:w-[360px] flex-col shrink-0 transition-all duration-300">
             <ChatPanel username={channel.username} onCollapse={toggleChatCollapse} />
           </aside>
         ) : (
@@ -504,6 +328,183 @@ export default function Channel() {
             </span>
           </button>
         )}
+      </div>
+
+      {/* Row 2: Metadata Bar & Mobile Chat */}
+      <div className="flex flex-col gap-4 mb-6">
+        {/* CHANNEL METADATA BAR - Directly under the player/chat row */}
+        {(() => {
+          const avatarUrl = channel?.photo_url || 
+                            channel?.photoUrl || 
+                            channel?.avatar_url || 
+                            channel?.avatar || 
+                            channel?.profile_image || 
+                            channel?.broadcaster_avatar || 
+                            channel?.user?.avatar_url || 
+                            channel?.user?.photo_url || 
+                            channel?.user?.photoUrl || 
+                            channel?.user?.avatar ||
+                            channel?.user?.profile_image ||
+                            channel?.user?.broadcaster_avatar;
+
+          const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
+
+          const initials = (() => {
+            const name = channel?.display_name || channel?.username || username || "?";
+            const cleanName = typeof name === "string" ? name.trim() : "?";
+            const parts = cleanName.split(/\s+/);
+            if (parts.length >= 2 && parts[0] && parts[1]) {
+              return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
+            }
+            return cleanName.slice(0, 2).toUpperCase();
+          })();
+
+          return (
+            <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
+              {isLive && (
+                <div className="absolute top-4 right-4 md:top-5 md:right-5 flex items-center gap-3.5 font-mono text-xs font-bold z-10" data-testid="live-viewer-uptime">
+                  <div className="flex items-center gap-1 text-[#ff5c5c]">
+                    <User className="h-4 w-4" />
+                    <span>{channel.viewer_count || 0}</span>
+                  </div>
+                  <div className="text-white">
+                    {channel.stream_started_at ? (
+                      <LiveDuration startedAt={channel.stream_started_at} />
+                    ) : (
+                      "00:00:00"
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                {/* Left Column: Avatar + Profile details */}
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  {/* Spherically-bounded avatar container */}
+                  <div className="h-14 w-14 md:h-16 md:w-16 rounded-full border-2 border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
+                    {resolvedAvatar ? (
+                      <img 
+                        src={resolvedAvatar} 
+                        alt={channel.username} 
+                        className="h-full w-full object-cover rounded-full"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-[#1e1e22] text-[#e4e4e7] rounded-full font-mono text-base font-black select-none uppercase">
+                        {initials}
+                      </div>
+                    )}
+                    {/* Live/Offline status indicator on avatar */}
+                    {isLive && (
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#e5ff00] border-2 border-[#0e0e10]" />
+                    )}
+                  </div>
+
+                  {/* Text Area */}
+                  <div className="min-w-0 flex-1 pr-24 lg:pr-32">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h1 className="font-display text-base font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1.5">
+                        <span>@{channel.username || username}</span>
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#9146ff] text-white" title="Verified Sparkz Partner">
+                          <Check className="h-2.5 w-2.5 stroke-[4]" />
+                        </span>
+                      </h1>
+                      
+                      {isLive ? (
+                        <span className="live-badge !py-0.5 !px-1.5 text-[9px] font-bold uppercase tracking-wider bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20">
+                          <span className="dot live-dot bg-[#e5ff00]" /> LIVE
+                        </span>
+                      ) : (
+                        <span className="chip !py-0.5 !px-1.5 text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border-zinc-700">
+                          OFFLINE
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stream Title / Custom description */}
+                    <h2 className="font-sans text-sm font-semibold leading-snug text-zinc-100 mb-1.5">
+                      {channel.stream_title || "Welcome to my underground broadcast"}
+                    </h2>
+
+                    {/* Metadata row */}
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-zinc-400">
+                      {channel.category && (
+                        <Link to="/browse" className="text-[#bf94ff] hover:underline font-bold uppercase tracking-wider">
+                          {channel.category}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
+                <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end lg:mt-5">
+                  <FollowButton
+                    username={channel.username}
+                    isFollowing={channel.is_following}
+                    followerCount={channel.follower_count}
+                    ownChannel={ownChannel}
+                    onChange={(res) =>
+                      setChannel((prev) => ({
+                        ...prev,
+                        is_following: res.following,
+                        follower_count: res.follower_count,
+                      }))
+                    }
+                  />
+
+                  <Link
+                    to="/payouts?buy=true"
+                    data-testid="channel-buy-bits-btn"
+                    className="flex items-center gap-1.5 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
+                    title="Purchase Vinyl Bits to Support DJ"
+                  >
+                    <Coins className="h-4 w-4 text-[#e5ff00] animate-pulse" />
+                    <span>BUY BITS</span>
+                  </Link>
+
+                  <ShareButton
+                    username={channel.username}
+                    streamTitle={channel.stream_title}
+                  />
+                  
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="btn-ghost inline-flex items-center gap-2 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-2 !px-3"
+                    title="Report this broadcast"
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                    <span className="font-mono text-xs uppercase tracking-wider">REPORT</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* BOTTOM MUSIC GENRE TAG CONTAINER - Under the player metadata, display their own genre music tags */}
+              {channel.tags && channel.tags.length > 0 && (
+                <div className="mt-4 pt-3.5 border-t border-[#27272a]/60">
+                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2">// GENRE / STYLE TARGETS:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {channel.tags.map((tag, idx) => (
+                      <Link
+                        key={idx}
+                        to={`/browse?search=${encodeURIComponent(tag)}`}
+                        className="inline-flex items-center px-3 py-1 bg-zinc-900 hover:bg-[#e5ff00] border border-zinc-700/85 hover:border-[#e5ff00] text-xs font-mono text-zinc-300 hover:text-black transition-all rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                      >
+                        #{tag.toUpperCase()}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* MOBILE CHAT PLACEMENT: Sits directly under the video player metadata on mobile views */}
+        <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10]">
+          <div className="h-[400px] sm:h-[485px]">
+            <ChatPanel username={channel.username} />
+          </div>
+        </div>
       </div>
 
       {/* Row 2: Secondary Metadata (Schedule & Previous Sessions) & Right Column Cards */}
