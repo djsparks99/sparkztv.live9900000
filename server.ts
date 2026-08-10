@@ -361,42 +361,83 @@ async function deleteFirestoreDocSafe(collectionName: string, docId: string, aut
   return false;
 }
 
-async function updateFirestoreChannelLiveStatus(isLive: boolean) {
+async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string | boolean, isLiveInput?: boolean) {
   try {
     const nowIso = new Date().toISOString();
-    
-    // Update in-memory channel to ensure REST API is instantly in sync
-    const masterChan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
-    if (masterChan) {
-      masterChan.is_live = isLive;
-      masterChan.isLive = isLive;
-      masterChan.last_updated = nowIso;
-      if (isLive) {
-        masterChan.stream_started_at = masterChan.stream_started_at || nowIso;
+    let channel: ChannelDoc | undefined;
+    let isLive = false;
+
+    if (typeof channelOrId === "boolean") {
+      // Legacy signature: updateFirestoreChannelLiveStatus(isLive) -> updates master channel
+      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
+      isLive = channelOrId;
+    } else {
+      isLive = isLiveInput !== undefined ? isLiveInput : false;
+      if (typeof channelOrId === "string") {
+        channel = db.channels.get(channelOrId) || Array.from(db.channels.values()).find(
+          (c) => (c.username || "").toLowerCase() === channelOrId.toLowerCase()
+        );
       } else {
-        masterChan.stream_started_at = null;
+        channel = channelOrId;
       }
     }
 
-    const primaryDocId = "nsU1v44XFnN3FloJvNePqj6cBG2";
-    
+    if (!channel) {
+      // Fallback to master if no channel is matched
+      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
+    }
+
+    if (!channel) {
+      console.warn("[Firestore Status] No channel found to update.");
+      return;
+    }
+
+    const isMaster =
+      (channel.username || "").toLowerCase() === "djsparkz" ||
+      channel.channel_id === "nsU1v44XFnN3FloJvNePqj6cBG2" ||
+      channel.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2";
+
+    // Update in-memory channel to ensure REST API is instantly in sync
+    channel.is_live = isLive;
+    channel.isLive = isLive;
+    channel.last_updated = nowIso;
+    if (isLive) {
+      channel.stream_started_at = channel.stream_started_at || nowIso;
+    } else {
+      channel.stream_started_at = null;
+    }
+
+    // Mirror to other keys in the in-memory map
+    if (channel.username) {
+      const mapped = db.channels.get(channel.username.toLowerCase());
+      if (mapped && mapped !== channel) {
+        mapped.is_live = isLive;
+        mapped.isLive = isLive;
+        mapped.last_updated = nowIso;
+        mapped.stream_started_at = channel.stream_started_at;
+      }
+    }
+
     const updatePayload: Record<string, any> = {
       is_live: isLive,
       isLive: isLive,
       last_updated: nowIso,
+      stream_started_at: channel.stream_started_at,
     };
 
-    if (isLive) {
-      updatePayload.stream_started_at = masterChan?.stream_started_at || nowIso;
+    if (isMaster) {
+      const primaryDocId = "nsU1v44XFnN3FloJvNePqj6cBG2";
+      // Update both document keys to cover all lookup types in Firestore
+      await setFirestoreDocSafe("channels", primaryDocId, updatePayload, true);
+      await setFirestoreDocSafe("channels", "djsparkz", updatePayload, true);
     } else {
-      updatePayload.stream_started_at = null;
+      await setFirestoreDocSafe("channels", channel.channel_id, updatePayload, true);
+      if (channel.username) {
+        await setFirestoreDocSafe("channels", channel.username.toLowerCase(), updatePayload, true);
+      }
     }
 
-    // Update both document keys to cover all lookup types in Firestore
-    await setFirestoreDocSafe("channels", primaryDocId, updatePayload, true);
-    await setFirestoreDocSafe("channels", "djsparkz", updatePayload, true);
-    
-    console.log(`[Firestore] Successfully set channel live status to ${isLive} in Firestore.`);
+    console.log(`[Firestore] Successfully set channel ${channel.username || channel.channel_id} live status to ${isLive} in Firestore.`);
   } catch (e: any) {
     console.error("[Firebase Admin] Failed to update Firestore channel status:", sanitizeErrorMsg(e.message));
   }
@@ -928,17 +969,60 @@ async function getMasterChannel() {
   return chan;
 }
 
-let lastLiveCheckTime = 0;
-async function syncMasterChannelLiveStatus(force = false) {
+const lastLiveCheckTimes = new Map<string, number>();
+
+async function syncChannelLiveStatus(usernameOrId?: string, force = false) {
+  const targetKey = (usernameOrId || "djsparkz").toLowerCase().trim();
   const now = Date.now();
-  if (!force && (now - lastLiveCheckTime < 1500)) {
-    return; // Prevent excessive API calls by throttling to at most once per 1.5s
+  const lastCheck = lastLiveCheckTimes.get(targetKey) || 0;
+  if (!force && (now - lastCheck < 1500)) {
+    return; // Prevent excessive API calls per channel by throttling
   }
-  lastLiveCheckTime = now;
+  lastLiveCheckTimes.set(targetKey, now);
+
   try {
-    const channel = await getMasterChannel();
+    let channel: ChannelDoc | undefined;
+    if (targetKey === "djsparkz" || targetKey === "nsu1v44xfnn3flojvnepqj6cbg2") {
+      channel = await getMasterChannel();
+    } else {
+      channel = db.channels.get(targetKey) || Array.from(db.channels.values()).find(
+        (c) => (c.username || "").toLowerCase() === targetKey || (c.channel_id || "").toLowerCase() === targetKey
+      );
+    }
+
+    if (!channel) {
+      // Try fetching dynamically from Firestore
+      const docSnap = await getFirestoreDocSafe("channels", targetKey);
+      if (docSnap && docSnap.exists) {
+        const data = docSnap.data();
+        if (data) {
+          channel = {
+            channel_id: docSnap.id,
+            username: data.username || "",
+            playback_id: data.playback_id || data.playbackId || "",
+            livepeer_stream_id: data.livepeer_stream_id || "",
+            stream_key: data.stream_key || "",
+            playback_url: data.playback_url || data.playbackUrl || "",
+            ivs_channel_arn: data.ivs_channel_arn || "",
+            is_live: Boolean(data.is_live || data.isLive),
+            isLive: Boolean(data.is_live || data.isLive),
+            stream_started_at: data.stream_started_at || null,
+            ...data
+          } as ChannelDoc;
+          db.channels.set(docSnap.id, channel);
+          if (channel.username) {
+            db.channels.set(channel.username.toLowerCase(), channel);
+          }
+        }
+      }
+    }
+
+    if (!channel) {
+      // Final fallback to master
+      channel = await getMasterChannel();
+    }
+
     const client = getIvsClient();
-    
     let isLiveAws = false;
     let isLiveFirestore = false;
     let awsCheckSuccess = false;
@@ -956,7 +1040,7 @@ async function syncMasterChannelLiveStatus(force = false) {
 
         if (isAuthError) {
           awsCheckSuccess = false;
-          console.error("[IVS Sync] AWS authentication failed:", err.message);
+          console.error(`[IVS Sync] AWS authentication failed for ${channel.username}:`, err.message);
         } else {
           // Any non-auth error (ChannelNotBroadcasting, ResourceNotFound, 404, or deserialization on empty stream) indicates channel is offline
           isLiveAws = false;
@@ -967,7 +1051,7 @@ async function syncMasterChannelLiveStatus(force = false) {
     }
 
     try {
-      const docSnap = await getFirestoreDocSafe("channels", "djsparkz");
+      const docSnap = await getFirestoreDocSafe("channels", channel.channel_id || "djsparkz");
       if (docSnap && docSnap.exists) {
         const fsData = docSnap.data();
         if (fsData) {
@@ -975,7 +1059,7 @@ async function syncMasterChannelLiveStatus(force = false) {
         }
       }
     } catch (fsErr: any) {
-      console.warn("[IVS Sync] Failed to read fallback live status from Firestore:", sanitizeErrorMsg(fsErr.message));
+      console.warn(`[IVS Sync] Failed to read fallback live status from Firestore for ${channel.username}:`, sanitizeErrorMsg(fsErr.message));
     }
 
     // Force Live Feed Detection: If we successfully verified with AWS IVS API, use that as the single source of truth.
@@ -983,19 +1067,16 @@ async function syncMasterChannelLiveStatus(force = false) {
     const isLive = awsCheckSuccess ? isLiveAws : isLiveFirestore;
 
     if (channel.is_live !== isLive || (isLive && !channel.stream_started_at)) {
-      channel.is_live = isLive;
-      channel.isLive = isLive;
-      if (isLive) {
-        channel.stream_started_at = channel.stream_started_at || new Date().toISOString();
-      } else {
-        channel.stream_started_at = null;
-      }
-      await updateFirestoreChannelLiveStatus(isLive);
+      await updateFirestoreChannelLiveStatus(channel, isLive);
       console.log(`[IVS Sync] Auto-synced live status to ${isLive} for ${channel.username} (started_at: ${channel.stream_started_at})`);
     }
   } catch (err: any) {
-    console.error("[IVS Sync] Error syncing live status:", err.message);
+    console.error(`[IVS Sync] Error syncing live status for ${targetKey}:`, err.message);
   }
+}
+
+async function syncMasterChannelLiveStatus(force = false) {
+  return syncChannelLiveStatus("djsparkz", force);
 }
 
 const PORT = 3000;
@@ -1144,8 +1225,8 @@ async function startServer() {
 
   app.get("/api/channels/:id", async (req, res) => {
     try {
-      await syncMasterChannelLiveStatus();
       const requestedId = req.params.id;
+      await syncChannelLiveStatus(requestedId);
       const normalizedId = (requestedId || "").toLowerCase().trim();
 
       if (normalizedId === "djsparkz" || normalizedId === "nsu1v44xfnn3flojvnepqj6cbg2") {
@@ -1264,12 +1345,17 @@ async function startServer() {
   });
 
   app.post("/api/ivs/check-status", async (req, res) => {
+    const target = req.body.username || req.body.channel_id || "djsparkz";
     try {
-      await syncMasterChannelLiveStatus(true);
-      const channel = await getMasterChannel();
+      await syncChannelLiveStatus(String(target), true);
+      const channel = db.channels.get(String(target).toLowerCase()) || Array.from(db.channels.values()).find(
+        (c) => (c.username || "").toLowerCase() === String(target).toLowerCase()
+      ) || await getMasterChannel();
       return res.json({ isActive: channel.is_live, isLive: channel.is_live, is_live: channel.is_live });
     } catch (e) {
-      const channel = await getMasterChannel();
+      const channel = db.channels.get(String(target).toLowerCase()) || Array.from(db.channels.values()).find(
+        (c) => (c.username || "").toLowerCase() === String(target).toLowerCase()
+      ) || await getMasterChannel();
       return res.json({ isActive: channel.is_live, isLive: channel.is_live, is_live: channel.is_live });
     }
   });
@@ -1277,10 +1363,15 @@ async function startServer() {
   app.post("/api/webhook/stream-end", async (req, res) => {
     try {
       console.log("[Webhook] Received explicit stream-end signal:", req.body);
-      const channel = await getMasterChannel();
-      channel.is_live = false;
-      await updateFirestoreChannelLiveStatus(false);
-      return res.json({ success: true, message: "Stream status set to offline instantly." });
+      const target = req.body.username || req.body.channel_id || "djsparkz";
+      let targetChannel: ChannelDoc | undefined = db.channels.get(String(target).toLowerCase()) || Array.from(db.channels.values()).find(
+        (c) => (c.username || "").toLowerCase() === String(target).toLowerCase()
+      );
+      if (!targetChannel) {
+        targetChannel = await getMasterChannel();
+      }
+      await updateFirestoreChannelLiveStatus(targetChannel, false);
+      return res.json({ success: true, message: `Stream status for ${targetChannel.username} set to offline instantly.` });
     } catch (err: any) {
       return res.status(500).json({ error: "Failed to clear stream status", details: err.message });
     }
@@ -1315,12 +1406,32 @@ async function startServer() {
         lowerEvent.includes("live") ||
         lowerEvent.includes("online");
 
+      // Resolve the target channel from the AWS webhook metadata
+      const channelArn = detail.channel_arn || detail.arn || (payload.resources && payload.resources[0]) || "";
+      const channelName = detail.channel_name || "";
+      let targetChannel: ChannelDoc | undefined;
+
+      if (channelArn) {
+        targetChannel = Array.from(db.channels.values()).find(
+          (c) => c.ivs_channel_arn === channelArn
+        );
+      }
+      if (!targetChannel && channelName) {
+        const username = channelName.replace(/^sparkz-/, "");
+        targetChannel = db.channels.get(username.toLowerCase()) || Array.from(db.channels.values()).find(
+          (c) => (c.username || "").toLowerCase() === username.toLowerCase()
+        );
+      }
+      if (!targetChannel) {
+        targetChannel = await getMasterChannel();
+      }
+
       if (isStreamEnd && !isStreamStart) {
-        await updateFirestoreChannelLiveStatus(false);
-        console.log("[IVS Webhook] Instantly set channel status to OFFLINE via event:", eventName);
+        await updateFirestoreChannelLiveStatus(targetChannel, false);
+        console.log(`[IVS Webhook] Instantly set channel ${targetChannel.username} status to OFFLINE via event:`, eventName);
       } else if (isStreamStart) {
-        await updateFirestoreChannelLiveStatus(true);
-        console.log("[IVS Webhook] Instantly set channel status to LIVE via event:", eventName);
+        await updateFirestoreChannelLiveStatus(targetChannel, true);
+        console.log(`[IVS Webhook] Instantly set channel ${targetChannel.username} status to LIVE via event:`, eventName);
       }
 
       return res.json({ success: true, processed_event: eventName });
@@ -1335,14 +1446,30 @@ async function startServer() {
       const eventName = payload.event || "";
       console.log("[Livepeer Webhook] Received event:", eventName, payload);
       
-      const channel = await getMasterChannel();
-      
+      const streamId = payload.stream?.id || payload.streamId || "";
+      const playbackId = payload.stream?.playbackId || "";
+      let targetChannel: ChannelDoc | undefined;
+
+      if (streamId) {
+        targetChannel = Array.from(db.channels.values()).find(
+          (c) => c.livepeer_stream_id === streamId
+        );
+      }
+      if (!targetChannel && playbackId) {
+        targetChannel = Array.from(db.channels.values()).find(
+          (c) => c.playback_id === playbackId || c.playbackUrl?.includes(playbackId)
+        );
+      }
+      if (!targetChannel) {
+        targetChannel = await getMasterChannel();
+      }
+
       if (eventName === "stream.idle" || eventName.toLowerCase().includes("end")) {
-        channel.is_live = false;
-        await updateFirestoreChannelLiveStatus(false);
+        await updateFirestoreChannelLiveStatus(targetChannel, false);
+        console.log(`[Livepeer Webhook] Instantly set channel ${targetChannel.username} status to OFFLINE via event:`, eventName);
       } else if (eventName === "stream.started" || eventName.toLowerCase().includes("start")) {
-        channel.is_live = true;
-        await updateFirestoreChannelLiveStatus(true);
+        await updateFirestoreChannelLiveStatus(targetChannel, true);
+        console.log(`[Livepeer Webhook] Instantly set channel ${targetChannel.username} status to LIVE via event:`, eventName);
       }
       
       return res.json({ success: true });
