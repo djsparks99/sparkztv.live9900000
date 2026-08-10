@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api, fileUrl } from "@/lib/api";
+import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot, collection, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import ChatPanel from "@/components/ChatPanel";
 import FollowButton from "@/components/FollowButton";
 import SubscribeButton from "@/components/SubscribeButton";
 import ShareButton from "@/components/ShareButton";
+import AudioVisualizer from "@/components/AudioVisualizer";
 import SessionList from "@/components/SessionList";
 import ScheduleDisplay from "@/components/ScheduleDisplay";
 import LiveDuration from "@/components/LiveDuration";
@@ -371,21 +372,15 @@ export default function Channel() {
             <div className="border border-[#27272a] bg-[#0e0e10] py-2 px-3 md:py-2.5 md:px-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 {/* Left Column: Avatar + Profile details */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex items-center gap-3 min-w-0 lg:flex-1">
                   {/* Spherically-bounded avatar container */}
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
-                    {resolvedAvatar ? (
-                      <img 
-                        src={resolvedAvatar} 
-                        alt={channel.username} 
-                        className="h-full w-full object-cover rounded-full"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-[#1e1e22] text-[#e4e4e7] rounded-full font-mono text-xs font-black select-none uppercase">
-                        {initials}
-                      </div>
-                    )}
+                    <img 
+                      src={resolvedAvatar || DEFAULT_AVATAR} 
+                      alt={channel.username} 
+                      className="h-full w-full object-cover rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
                     {/* Live/Offline status indicator on avatar */}
                     {isLive && (
                       <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-[#e5ff00] border border-[#0e0e10]" />
@@ -447,8 +442,11 @@ export default function Channel() {
                   </div>
                 </div>
 
+                {/* Middle Column: Animated Audio Visualizer */}
+                <AudioVisualizer isLive={isLive} />
+
                 {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
-                <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
+                <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end lg:flex-1">
                   <FollowButton
                     username={channel.username}
                     isFollowing={channel.is_following}
@@ -466,7 +464,7 @@ export default function Channel() {
                   <Link
                     to="/payouts?buy=true"
                     data-testid="channel-buy-bits-btn"
-                    className="flex items-center gap-1 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
+                    className="flex items-center gap-1 border border-[#27272a] bg-black px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-zinc-900 transition-all"
                     title="Purchase Vinyl Bits to Support DJ"
                   >
                     <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
@@ -552,7 +550,17 @@ export default function Channel() {
         <div className="flex-1 min-w-0 flex flex-col gap-6">
           {/* Schedule */}
           <div>
-            <ScheduleDisplay schedule={channel.schedule} username={channel.username} />
+            <ScheduleDisplay
+              schedule={channel.schedule}
+              username={channel.username}
+              isOwner={ownChannel}
+              onScheduleUpdated={(updatedSchedules) => {
+                setChannel((prev) => ({
+                  ...prev,
+                  schedule: updatedSchedules,
+                }));
+              }}
+            />
           </div>
 
           {/* Past sets */}

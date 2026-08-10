@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, fileUrl } from "@/lib/api";
+import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import SEO from "@/components/SEO";
@@ -511,19 +511,13 @@ function StreamerCard({ channel }) {
         {/* Top Header Row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            {resolvedAvatar && !imageError ? (
-              <img
-                src={resolvedAvatar}
-                alt={channel.display_name && !isDocId(channel.display_name) ? channel.display_name : cleanUsername}
-                className="h-12 w-12 border border-[#27272a] object-cover grayscale contrast-125 group-hover:grayscale-0 transition-all"
-                referrerPolicy="no-referrer"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className={`flex h-12 w-12 items-center justify-center border font-mono text-sm font-bold select-none uppercase ${initialsBgColor}`}>
-                {initials}
-              </div>
-            )}
+            <img
+              src={(resolvedAvatar && !imageError) ? resolvedAvatar : DEFAULT_AVATAR}
+              alt={channel.display_name && !isDocId(channel.display_name) ? channel.display_name : cleanUsername}
+              className="h-12 w-12 border border-[#27272a] object-cover grayscale-0 md:grayscale md:contrast-125 md:group-hover:grayscale-0 transition-all"
+              referrerPolicy="no-referrer"
+              onError={() => { if (resolvedAvatar && !imageError) setImageError(true); }}
+            />
             <div className="min-w-0">
               <h2 className="truncate font-display text-lg font-black text-white group-hover:text-[#e5ff00] transition-colors">
                 {channel.display_name && !isDocId(channel.display_name) && channel.display_name !== "SPARKS 108 FM" ? channel.display_name : cleanUsername}

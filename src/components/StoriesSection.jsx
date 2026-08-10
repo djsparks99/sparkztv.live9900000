@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { api, fileUrl, apiErrorMessage, fileToBase64 } from "@/lib/api";
+import { api, fileUrl, apiErrorMessage, fileToBase64, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   Plus,
@@ -92,15 +92,11 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
             title="Post a 24-Hour Transmission"
           >
             <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-[#e5ff00]/60 bg-[#0a0a0a] transition-all group-hover:scale-105 group-hover:border-[#e5ff00] group-hover:bg-[#e5ff00]/10">
-              {user?.photo_url ? (
-                <img
-                  src={fileUrl(user.photo_url)}
-                  alt="Your Avatar"
-                  className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100"
-                />
-              ) : (
-                <div className="h-full w-full rounded-full bg-zinc-900" />
-              )}
+              <img
+                src={user?.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+                alt="Your Avatar"
+                className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100 bg-black"
+              />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full border border-black bg-[#e5ff00] text-black shadow-md transition-transform group-hover:scale-110">
                   <Plus className="h-3 w-3 stroke-[3]" />
@@ -135,17 +131,11 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
                 >
                   <div className="relative p-0.5 rounded-full border border-[#e5ff00] shadow-[0_0_6px_rgba(229,255,0,0.3)] group-hover:scale-105 group-hover:shadow-[0_0_10px_rgba(229,255,0,0.6)] transition-all">
                     <div className="h-8 w-8 overflow-hidden rounded-full bg-zinc-900 border border-black flex items-center justify-center">
-                      {story.user_photo_url ? (
-                        <img
-                          src={fileUrl(story.user_photo_url)}
-                          alt={story.display_name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center font-mono font-bold text-xs text-[#e5ff00] bg-zinc-950">
-                          {story.display_name?.slice(0, 2)?.toUpperCase()}
-                        </div>
-                      )}
+                      <img
+                        src={story.user_photo_url ? fileUrl(story.user_photo_url) : DEFAULT_AVATAR}
+                        alt={story.display_name}
+                        className="h-full w-full object-cover bg-black"
+                      />
                     </div>
 
                     {/* Media Type Indicator Badge */}
@@ -213,15 +203,11 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
               className="group relative flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer"
             >
               <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-[#e5ff00]/60 bg-[#0a0a0a] transition-all group-hover:scale-105 group-hover:border-[#e5ff00] group-hover:bg-[#e5ff00]/10">
-                {user?.photo_url ? (
-                  <img
-                    src={fileUrl(user.photo_url)}
-                    alt="Your Avatar"
-                    className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100"
-                  />
-                ) : (
-                  <div className="h-full w-full rounded-full bg-zinc-900" />
-                )}
+                <img
+                  src={user?.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+                  alt="Your Avatar"
+                  className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100 bg-black"
+                />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full border border-black bg-[#e5ff00] text-black shadow-md transition-transform group-hover:scale-110">
                     <Plus className="h-3 w-3 stroke-[3]" />
@@ -262,17 +248,11 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
                   >
                     <div className="relative p-0.5 rounded-full border border-[#e5ff00] shadow-[0_0_6px_rgba(229,255,0,0.3)] group-hover:scale-105 group-hover:shadow-[0_0_10px_rgba(229,255,0,0.6)] transition-all">
                       <div className="h-9 w-9 overflow-hidden rounded-full bg-zinc-900 border border-black flex items-center justify-center">
-                        {story.user_photo_url ? (
-                          <img
-                            src={fileUrl(story.user_photo_url)}
-                            alt={story.display_name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center font-mono font-bold text-[10px] text-[#e5ff00] bg-zinc-950">
-                            {story.display_name?.slice(0, 2)?.toUpperCase()}
-                          </div>
-                        )}
+                        <img
+                          src={story.user_photo_url ? fileUrl(story.user_photo_url) : DEFAULT_AVATAR}
+                          alt={story.display_name}
+                          className="h-full w-full object-cover bg-black"
+                        />
                       </div>
 
                       {/* Media Type Indicator Badge */}
@@ -354,15 +334,11 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
             className="group relative flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer"
           >
             <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-[#e5ff00]/60 bg-[#0a0a0a] transition-all group-hover:scale-105 group-hover:border-[#e5ff00] group-hover:bg-[#e5ff00]/10">
-              {user?.photo_url ? (
-                <img
-                  src={fileUrl(user.photo_url)}
-                  alt="Your Avatar"
-                  className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100"
-                />
-              ) : (
-                <div className="h-full w-full rounded-full bg-zinc-900" />
-              )}
+              <img
+                src={user?.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+                alt="Your Avatar"
+                className="h-full w-full rounded-full object-cover opacity-60 group-hover:opacity-100 bg-black"
+              />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full border border-black bg-[#e5ff00] text-black shadow-md transition-transform group-hover:scale-110">
                   <Plus className="h-4 w-4 stroke-[3]" />
@@ -409,18 +385,12 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
                 >
                   <div className="relative p-0.5 rounded-full border-2 border-[#e5ff00] shadow-[0_0_10px_rgba(229,255,0,0.4)] group-hover:scale-105 group-hover:shadow-[0_0_16px_rgba(229,255,0,0.8)] transition-all">
                     <div className="h-16 w-16 overflow-hidden rounded-full bg-zinc-900 border border-black flex items-center justify-center">
-                      {story.user_photo_url ? (
-                        <img
-                          src={fileUrl(story.user_photo_url)}
-                          alt={story.display_name}
-                          className="h-full w-full object-cover"
-                          style={{ objectFit: "cover", width: "100%", height: "100%" }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center font-mono font-bold text-sm text-[#e5ff00] bg-zinc-950">
-                          {story.display_name?.slice(0, 2)?.toUpperCase()}
-                        </div>
-                      )}
+                      <img
+                        src={story.user_photo_url ? fileUrl(story.user_photo_url) : DEFAULT_AVATAR}
+                        alt={story.display_name}
+                        className="h-full w-full object-cover bg-black"
+                        style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                      />
                     </div>
 
                     {/* Media Type Indicator Badge */}
@@ -572,17 +542,11 @@ function StoryViewerModal({
         <div className="absolute top-4 left-0 right-0 z-20 flex items-center justify-between px-4 pt-2">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-[#e5ff00] bg-zinc-900">
-              {story.user_photo_url ? (
-                <img
-                  src={fileUrl(story.user_photo_url)}
-                  alt={story.display_name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center font-mono font-bold text-xs text-[#e5ff00]">
-                  {story.display_name?.slice(0, 2)?.toUpperCase()}
-                </div>
-              )}
+              <img
+                src={story.user_photo_url ? fileUrl(story.user_photo_url) : DEFAULT_AVATAR}
+                alt={story.display_name}
+                className="h-full w-full object-cover bg-black"
+              />
             </div>
             <div>
               <Link

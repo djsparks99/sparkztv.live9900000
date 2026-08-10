@@ -76,7 +76,7 @@ export default function ShareButton({ username, streamTitle }) {
       {isOpen && (
         <div
           data-testid="share-dropdown-menu"
-          className="absolute right-0 mt-2 w-48 z-50 border border-[#27272a] bg-[#0c0c0e] py-1 shadow-2xl rounded-sm font-mono text-xs"
+          className="absolute right-0 bottom-full mb-2 w-48 z-50 border border-[#27272a] bg-[#0c0c0e] py-1 shadow-2xl rounded-sm font-mono text-xs"
         >
           <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-zinc-500 border-b border-[#27272a]">
             SHARE CHANNEL

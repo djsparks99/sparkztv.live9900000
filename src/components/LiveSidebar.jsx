@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, fileUrl } from "@/lib/api";
+import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -617,17 +617,11 @@ function SidebarBroadcasterItem({ channel, collapsed, isChimed, onToggleChime, n
           {/* Avatar Container */}
           <div className="relative flex-shrink-0">
             <div className={ringStyle}>
-              {channel.photo_url ? (
-                <img
-                  src={fileUrl(channel.photo_url)}
-                  alt={displayName}
-                  className="h-8 w-8 rounded-full object-cover transition-all"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
-                  <User className="h-4 w-4 text-zinc-400" />
-                </div>
-              )}
+              <img
+                src={channel.photo_url ? fileUrl(channel.photo_url) : DEFAULT_AVATAR}
+                alt={displayName}
+                className="h-8 w-8 rounded-full object-cover transition-all"
+              />
             </div>
             {isLive && showLiveIndicator && (
               <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-black bg-red-600 animate-pulse" />

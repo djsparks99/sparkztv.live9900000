@@ -581,9 +581,61 @@ interface ChannelDoc {
 class InMemStore {
   users: Map<string, UserDoc> = new Map();
   channels: Map<string, ChannelDoc> = new Map();
+  emotes: Map<string, any> = new Map();
 
   constructor() {
     this.seedDefaults();
+    this.seedEmotes();
+  }
+
+  seedEmotes() {
+    const globalEmotesList = [
+      {
+        id: "global-sparkz",
+        code: ":sparkz:",
+        name: "Sparkz Lightning",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23e5ff00\"><path d=\"M13 10V3L4 14h7v7l9-11h-7z\"/></svg>",
+        channel_username: "global"
+      },
+      {
+        id: "global-vinyl",
+        code: ":vinyl:",
+        name: "Spinning Vinyl",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23e5ff00\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"3\" fill=\"%23e5ff00\"/></svg>",
+        channel_username: "global"
+      },
+      {
+        id: "global-subdrop",
+        code: ":subDrop:",
+        name: "Subwoofer Drop",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23e5ff00\" stroke-width=\"2\"><rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><circle cx=\"12\" cy=\"14\" r=\"4\"/><circle cx=\"12\" cy=\"6\" r=\"2\"/></svg>",
+        channel_username: "global"
+      },
+      {
+        id: "global-rave",
+        code: ":rave:",
+        name: "Rave Lasers",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23e5ff00\" stroke-width=\"2\"><path d=\"M2 22 L10 10 M22 22 L14 10 M12 2 L12 8 M5 5 L9 9 M19 5 L15 9\"/></svg>",
+        channel_username: "global"
+      },
+      {
+        id: "global-pullup",
+        code: ":pullUp:",
+        name: "Turntable Pull Up",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23e5ff00\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 12 L17 7 M17 7 L19 9\"/></svg>",
+        channel_username: "global"
+      },
+      {
+        id: "global-fire",
+        code: ":fire:",
+        name: "Fire Sparks",
+        image_url: "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23e5ff00\"><path d=\"M12 2c0 0-4 3.5-4 7.5C8 12.5 10 15 12 15s4-2.5 4-5.5C16 5.5 12 2 12 2zm-2 15c0 0-2 1.5-2 3.5C8 22 9.5 23 11 23s2-1 2-2.5c0-2-2-3.5-2-3.5z\"/></svg>",
+        channel_username: "global"
+      }
+    ];
+    for (const em of globalEmotesList) {
+      this.emotes.set(em.id, em);
+    }
   }
 
   seedDefaults() {
@@ -1714,6 +1766,96 @@ async function startServer() {
   api.patch("/channels/mine", handleChannelUpdate);
   api.put("/channels/mine", handleChannelUpdate);
   api.post("/channels/mine", handleChannelUpdate);
+
+  // GET /channels/:username/emotes
+  api.get("/channels/:username/emotes", async (req: any, res: Response) => {
+    try {
+      const targetUsername = (req.params.username || "").toLowerCase().trim();
+      const allEmotes = Array.from(db.emotes.values());
+      const filtered = allEmotes.filter(
+        (e: any) =>
+          (e.channel_username || "").toLowerCase() === "global" ||
+          (e.channel_username || "").toLowerCase() === targetUsername
+      );
+      return res.json({ emotes: filtered });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Failed to load emotes", details: err.message });
+    }
+  });
+
+  // POST /channels/mine/emotes
+  api.post("/channels/mine/emotes", authMiddleware, async (req: any, res: Response) => {
+    try {
+      const { code, name, file, image, image_url } = req.body;
+      if (!code) {
+        return res.status(400).json({ error: "Emote code is required" });
+      }
+      
+      const username = req.user?.username;
+      if (!username) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Check count limit
+      const currentCount = Array.from(db.emotes.values()).filter(
+        (e: any) => (e.channel_username || "").toLowerCase() === username.toLowerCase()
+      ).length;
+      if (currentCount >= 20) {
+        return res.status(400).json({ error: "You can have up to 20 custom emotes." });
+      }
+
+      let finalUrl = image_url || "";
+      const base64Data = file || image;
+      if (base64Data) {
+        const savedPath = saveBase64ToUploads(base64Data);
+        if (savedPath) {
+          finalUrl = savedPath;
+        }
+      }
+
+      if (!finalUrl) {
+        return res.status(400).json({ error: "Emote image/file or image_url is required." });
+      }
+
+      const newEmote = {
+        id: "emote-" + crypto.randomUUID(),
+        code: code.trim(),
+        name: (name || code).trim(),
+        image_url: finalUrl,
+        channel_username: username
+      };
+
+      db.emotes.set(newEmote.id, newEmote);
+      return res.json({ success: true, emote: newEmote });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Failed to create emote", details: err.message });
+    }
+  });
+
+  // DELETE /channels/mine/emotes/:id
+  api.delete("/channels/mine/emotes/:id", authMiddleware, async (req: any, res: Response) => {
+    try {
+      const emoteId = req.params.id;
+      const username = req.user?.username;
+      if (!username) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const emote = db.emotes.get(emoteId);
+      if (!emote) {
+        return res.status(404).json({ error: "Emote not found." });
+      }
+
+      if ((emote.channel_username || "").toLowerCase() !== username.toLowerCase()) {
+        return res.status(403).json({ error: "Forbidden: You do not own this emote." });
+      }
+
+      db.emotes.delete(emoteId);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Failed to delete emote", details: err.message });
+    }
+  });
 
   // Dynamic and robust IP-based channel view tracking with heartbeat registers and strict active IP detection
   api.post("/channels/:id/view", async (req: any, res: Response) => {

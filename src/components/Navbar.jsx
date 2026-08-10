@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins } from "lucide-react";
-import { fileUrl } from "@/lib/api";
+import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download } from "lucide-react";
+import { fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
+import { usePWA } from "@/hooks/usePWA";
 // Transparent yellow speech bubble logo sticker icon with cute cartoon eyes
 function SpeechBubbleLogo({ className = "h-10 w-10" }) {
   return (
@@ -70,6 +71,7 @@ import {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { isInstallable, installApp } = usePWA();
   const [navSearch, setNavSearch] = useState("");
   const [isLight, setIsLight] = useState(() => {
     if (typeof window !== "undefined") {
@@ -144,6 +146,20 @@ export default function Navbar() {
             <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
             <span>BUY BITS</span>
           </Link>
+
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={installApp}
+              data-testid="pwa-install-btn"
+              className="flex items-center gap-1.5 border border-[#e5ff00] bg-[#e5ff00]/10 px-2.5 py-1.5 font-mono text-[11px] uppercase font-bold tracking-wider text-[#e5ff00] hover:bg-[#e5ff00] hover:text-black transition-all shadow-[0_0_8px_rgba(229,255,0,0.3)]"
+              title="Install SPARKZ.TV to your Device"
+              aria-label="Install App"
+            >
+              <Download className="h-3.5 w-3.5 text-[#e5ff00]" />
+              <span>INSTALL APP</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -242,17 +258,11 @@ function UserMenu({ user, onLogout }) {
           data-testid="user-menu-trigger"
           className="flex items-center gap-2 border border-[#27272a] px-3 py-2 transition-colors hover:border-white focus:border-[#e5ff00] focus:outline-none"
         >
-          {user.photo_url ? (
-            <img
-              src={fileUrl(user.photo_url)}
-              alt=""
-              className="h-6 w-6 object-cover grayscale contrast-125"
-            />
-          ) : (
-            <div className="flex h-6 w-6 items-center justify-center border border-[#27272a]">
-              <User className="h-3 w-3" />
-            </div>
-          )}
+          <img
+            src={user.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+            alt=""
+            className="h-6 w-6 object-cover grayscale-0 md:grayscale md:contrast-125"
+          />
           <span className="hidden font-mono text-xs uppercase tracking-widest sm:inline">
             {user.username}
           </span>

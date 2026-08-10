@@ -331,3 +331,16 @@ export async function uploadImage(url, file, extraData = {}) {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+export const DEFAULT_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M 25 15 L 75 15 A 10 10 0 0 1 85 25 L 85 65 A 10 10 0 0 1 75 75 L 35 75 C 28 75, 15 82, 12 88 C 14 82, 18 76, 22 75 A 10 10 0 0 1 15 65 L 15 25 A 10 10 0 0 1 25 15 Z" fill="#e5ff00" stroke="#000000" stroke-width="5.5" stroke-linejoin="round" />
+    <circle cx="38" cy="46" r="8" fill="#121214" />
+    <circle cx="35.5" cy="43.5" r="2.5" fill="#ffffff" />
+    <circle cx="41" cy="49" r="1.1" fill="#ffffff" />
+    <circle cx="62" cy="46" r="8" fill="#121214" />
+    <circle cx="59.5" cy="43.5" r="2.5" fill="#ffffff" />
+    <circle cx="65" cy="49" r="1.1" fill="#ffffff" />
+  </svg>`
+)}`;
+

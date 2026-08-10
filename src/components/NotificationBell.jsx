@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, User } from "lucide-react";
-import { api, fileUrl } from "@/lib/api";
+import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { toast } from "sonner";
 
 function formatRelative(iso) {
@@ -118,17 +118,11 @@ export default function NotificationBell() {
                   onClick={() => setOpen(false)}
                   className="flex items-start gap-3 border-b border-[#27272a] px-4 py-3 transition-colors last:border-0 hover:bg-[#0f0f0f]"
                 >
-                  {n.channel_photo_url ? (
-                    <img
-                      src={fileUrl(n.channel_photo_url)}
-                      alt=""
-                      className="h-10 w-10 flex-shrink-0 border border-[#27272a] object-cover grayscale"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center border border-[#27272a]">
-                      <User className="h-4 w-4 text-zinc-500" />
-                    </div>
-                  )}
+                  <img
+                    src={n.channel_photo_url ? fileUrl(n.channel_photo_url) : DEFAULT_AVATAR}
+                    alt=""
+                    className="h-10 w-10 flex-shrink-0 border border-[#27272a] object-cover grayscale-0 md:grayscale bg-black"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="live-badge">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage } from "@/lib/api";
+import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage, DEFAULT_AVATAR } from "@/lib/api";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight } from "lucide-react";
@@ -48,6 +48,7 @@ export default function ChatPanel({ username, onCollapse }) {
   // Emotes state
   const [emotes, setEmotes] = useState([]);
   const [showEmotePicker, setShowEmotePicker] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [emoteTab, setEmoteTab] = useState("all"); 
   const [emoteSearch, setEmoteSearch] = useState("");
 
@@ -475,7 +476,7 @@ export default function ChatPanel({ username, onCollapse }) {
         <div className="flex items-center gap-1.5">
           <div
             data-testid="watts-counter"
-            className="inline-flex items-center gap-1 border border-[#e5ff00]/40 bg-[#e5ff00]/10 px-2 py-0.5 font-mono text-[10px] uppercase font-bold text-[#e5ff00]"
+            className="inline-flex items-center gap-1 border border-[#27272a] bg-black px-2 py-0.5 font-mono text-[10px] uppercase font-bold text-[#e5ff00]"
           >
             <Zap className="h-3 w-3 fill-[#e5ff00]" />
             <span>{watts} WATTS</span>
@@ -534,17 +535,15 @@ export default function ChatPanel({ username, onCollapse }) {
             </button>
 
             <div className="flex items-center gap-3 border-b border-[#27272a] pb-3">
-              {(inspectUser.photo_url || inspectUser.photoUrl || inspectUser.avatar || inspectUser.sender_photo_url) ? (
-                <img
-                  src={fileUrl(inspectUser.photo_url || inspectUser.photoUrl || inspectUser.avatar || inspectUser.sender_photo_url)}
-                  alt=""
-                  className="h-12 w-12 border border-[#e5ff00] object-cover rounded-sm"
-                />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center border border-[#27272a] bg-black rounded-sm">
-                  <User className="h-6 w-6 text-[#e5ff00]" />
-                </div>
-              )}
+              <img
+                src={
+                  (inspectUser.photo_url || inspectUser.photoUrl || inspectUser.avatar || inspectUser.sender_photo_url)
+                    ? fileUrl(inspectUser.photo_url || inspectUser.photoUrl || inspectUser.avatar || inspectUser.sender_photo_url)
+                    : DEFAULT_AVATAR
+                }
+                alt=""
+                className="h-12 w-12 border border-[#e5ff00] object-cover rounded-sm"
+              />
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-xs font-bold uppercase text-white truncate">
                   {inspectUser.display_name || inspectUser.username}
@@ -595,6 +594,47 @@ export default function ChatPanel({ username, onCollapse }) {
                 VISIT CHANNEL
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reaction Picker Popover */}
+      {showReactionPicker && (
+        <div
+          data-testid="reaction-picker-popover"
+          className="absolute bottom-16 right-3 z-30 border border-[#27272a] bg-[#050505] p-2.5 shadow-2xl rounded-sm max-w-[240px] animate-fade-in"
+        >
+          <div className="flex items-center justify-between border-b border-[#27272a] pb-1.5 mb-2">
+            <span className="font-mono text-[9px] uppercase tracking-wider font-bold text-zinc-400">
+              SELECT REACTION
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowReactionPicker(false)}
+              className="text-zinc-500 hover:text-white"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {REACTIONS.map((r) => (
+              <button
+                key={r.label}
+                type="button"
+                onClick={() => {
+                  sendReaction(r.char);
+                  setShowReactionPicker(false);
+                }}
+                disabled={!connected}
+                title={r.label}
+                className={`flex items-center gap-1 border border-zinc-800 bg-zinc-950 px-2 py-0.5 rounded-full font-mono text-[9px] font-bold uppercase transition-all duration-150 active:scale-90 ${r.color} ${
+                  !connected ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <span className="text-xs leading-none">{r.char}</span>
+                <span className="text-[8px] font-mono tracking-wider">{r.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -715,8 +755,8 @@ export default function ChatPanel({ username, onCollapse }) {
                 isHighlight
                   ? "border-[#e5ff00] bg-[#e5ff00] text-black shadow-[0_0_12px_rgba(229,255,0,0.6)]"
                   : watts >= 50
-                  ? "border-[#e5ff00]/40 text-[#e5ff00] hover:border-[#e5ff00] bg-[#e5ff00]/10"
-                  : "border-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed"
+                  ? "border-[#27272a] text-[#e5ff00] hover:border-[#e5ff00] bg-black hover:bg-zinc-900"
+                  : "border-zinc-800 text-zinc-600 opacity-50 cursor-not-allowed bg-black/40"
               }`}
             >
               <Flame className={`h-3 w-3 ${isHighlight ? "animate-pulse" : ""}`} />
@@ -760,34 +800,12 @@ export default function ChatPanel({ username, onCollapse }) {
             )}
           </div>
 
-          {/* Reaction Buttons Bar */}
-          <div className="flex items-center gap-1.5 border-b border-[#27272a]/40 pb-2 mb-1" data-testid="reactions-bar">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 select-none mr-1">// REACT:</span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {REACTIONS.map((r) => (
-                <button
-                  key={r.label}
-                  type="button"
-                  onClick={() => sendReaction(r.char)}
-                  disabled={!connected}
-                  title={r.label}
-                  className={`flex items-center gap-1 border border-zinc-800 bg-zinc-950 px-2 py-0.5 rounded-full font-mono text-[9px] font-bold uppercase transition-all duration-150 active:scale-90 ${r.color} ${
-                    !connected ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  <span className="text-xs leading-none">{r.char}</span>
-                  <span className="text-[8px] font-mono tracking-wider">{r.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <form onSubmit={send} className="flex gap-2" data-testid="chat-form">
             <div className="relative flex-1">
               <input
                 ref={inputRef}
                 data-testid="chat-input"
-                className={`input-terminal w-full pr-8 ${
+                className={`input-terminal w-full pr-14 ${
                   isHighlight ? "border-[#e5ff00] bg-[#e5ff00]/10 text-white font-bold" : ""
                 }`}
                 value={text}
@@ -800,14 +818,34 @@ export default function ChatPanel({ username, onCollapse }) {
                 maxLength={500}
                 disabled={!connected}
               />
-              <button
-                type="button"
-                onClick={() => setShowEmotePicker(!showEmotePicker)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-[#e5ff00]"
-                title="Insert Emote"
-              >
-                <Smile className="h-4 w-4" />
-              </button>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReactionPicker(!showReactionPicker);
+                    setShowEmotePicker(false);
+                  }}
+                  className={`text-zinc-400 hover:text-[#e5ff00] transition-colors ${
+                    showReactionPicker ? "text-[#e5ff00]" : ""
+                  }`}
+                  title="Send Quick Reaction"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmotePicker(!showEmotePicker);
+                    setShowReactionPicker(false);
+                  }}
+                  className={`text-zinc-400 hover:text-[#e5ff00] transition-colors ${
+                    showEmotePicker ? "text-[#e5ff00]" : ""
+                  }`}
+                  title="Insert Emote"
+                >
+                  <Smile className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             <button
@@ -906,23 +944,13 @@ function ChatMessage({ m, emotes, onInspectUser }) {
           : "hover:bg-white/5"
       }`}
     >
-      {m.sender_photo_url ? (
-        <img
-          src={fileUrl(m.sender_photo_url)}
-          alt=""
-          className={`h-7 w-7 flex-shrink-0 border object-cover grayscale rounded-sm ${
-            isHighVoltage ? "border-[#e5ff00]" : "border-[#27272a]"
-          }`}
-        />
-      ) : (
-        <div
-          className={`flex h-7 w-7 flex-shrink-0 items-center justify-center border bg-black rounded-sm ${
-            isHighVoltage ? "border-[#e5ff00]" : "border-[#27272a]"
-          }`}
-        >
-          <User className="h-3.5 w-3.5 text-zinc-500" />
-        </div>
-      )}
+      <img
+        src={m.sender_photo_url ? fileUrl(m.sender_photo_url) : DEFAULT_AVATAR}
+        alt=""
+        className={`h-7 w-7 flex-shrink-0 border object-cover grayscale-0 md:grayscale rounded-sm ${
+          isHighVoltage ? "border-[#e5ff00]" : "border-[#27272a]"
+        }`}
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">

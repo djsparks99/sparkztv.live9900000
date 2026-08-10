@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye, User } from "lucide-react";
-import { fileUrl } from "@/lib/api";
+import { fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 
 const THUMBS = [
   "https://images.unsplash.com/photo-1541126274323-dbac58d14741?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHx1bmRlcmdyb3VuZCUyMHJhdmUlMjBkaiUyMHNldHxlbnwwfHx8fDE3ODU0NDAwMzJ8MA&ixlib=rb-4.1.0&q=85",
@@ -124,19 +124,13 @@ export default function ChannelCard({ channel }) {
         )}
       </div>
       <div className="flex items-start gap-3 p-4">
-        {resolvedAvatar && !imageError ? (
-          <img
-            src={resolvedAvatar}
-            alt=""
-            className="h-10 w-10 flex-shrink-0 border border-[#27272a] object-cover grayscale group-hover:grayscale-0"
-            referrerPolicy="no-referrer"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center border font-mono text-xs font-bold select-none uppercase ${initialsBgColor}`}>
-            {initials}
-          </div>
-        )}
+        <img
+          src={(resolvedAvatar && !imageError) ? resolvedAvatar : DEFAULT_AVATAR}
+          alt=""
+          className="h-10 w-10 flex-shrink-0 border border-[#27272a] object-cover grayscale-0 md:grayscale md:group-hover:grayscale-0"
+          referrerPolicy="no-referrer"
+          onError={() => { if (resolvedAvatar && !imageError) setImageError(true); }}
+        />
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-base font-bold leading-tight">
             {channel.stream_title || "Untitled stream"}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, fileUrl, apiErrorMessage, fileToBase64, compressAndResizeImage } from "@/lib/api";
+import { api, fileUrl, apiErrorMessage, fileToBase64, compressAndResizeImage, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { updateUserProfileInFirestore } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -204,18 +204,12 @@ export default function Profile() {
           <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
             <div className="label-caps">// AVATAR</div>
             <div className="mt-4 flex flex-col items-center">
-              {user.photo_url ? (
-                <img
-                  src={fileUrl(user.photo_url)}
-                  alt=""
-                  className="h-40 w-40 border border-[#27272a] object-cover"
-                  data-testid="profile-avatar"
-                />
-              ) : (
-                <div className="flex h-40 w-40 items-center justify-center border border-[#27272a] bg-black">
-                  <User className="h-16 w-16 text-zinc-700" />
-                </div>
-              )}
+              <img
+                src={user.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+                alt=""
+                className="h-40 w-40 border border-[#27272a] object-cover bg-black"
+                data-testid="profile-avatar"
+              />
               <input
                 ref={fileRef}
                 type="file"

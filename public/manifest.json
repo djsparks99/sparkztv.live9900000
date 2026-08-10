@@ -1,0 +1,18 @@
+{
+  "short_name": "SPARKZ",
+  "name": "SPARKZ.TV — Underground DJ Broadcasts",
+  "description": "Decentralized broadcast protocol. No censorship. Watch live streams from the world's best underground DJs.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone",
+  "orientation": "portrait"
+}

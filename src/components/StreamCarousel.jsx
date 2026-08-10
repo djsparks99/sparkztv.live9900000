@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Radio, Play, Award, Volume2, ArrowRight, Bell, Copy, Disc, ExternalLink, HelpCircle, Server, Sparkles, Zap, Shield } from "lucide-react";
-import { fileUrl, api } from "@/lib/api";
+import { fileUrl, api, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import HlsPlayer from "@/components/HlsPlayer";
 import { motion } from "framer-motion";
@@ -717,12 +717,12 @@ export default function StreamCarousel({ allChannels = [], channels = [], isLoad
                   <div className="p-4 flex gap-3 flex-1 min-h-[105px]">
                     <Link to={`/channel/${slug}`} className="shrink-0">
                       <img
-                        src={avatarUrl.startsWith("http") ? avatarUrl : fileUrl(avatarUrl)}
+                        src={avatarUrl ? (avatarUrl.startsWith("http") ? avatarUrl : fileUrl(avatarUrl)) : DEFAULT_AVATAR}
                         alt={channel.display_name || slug}
                         className="h-10 w-10 border border-[#e5ff00]/40 group-hover:border-[#e5ff00] object-cover bg-black rounded-none transition-colors"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
-                          e.target.src = `https://api.dicebear.com/7.x/bottts/png?seed=${slug}`;
+                          e.target.src = DEFAULT_AVATAR;
                         }}
                       />
                     </Link>
