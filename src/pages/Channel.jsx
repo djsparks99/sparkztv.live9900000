@@ -55,6 +55,7 @@ export default function Channel() {
   const { user } = useAuth();
   const [channel, setChannel] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [analyser, setAnalyser] = useState(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -308,7 +309,12 @@ export default function Channel() {
       <div className="flex flex-col lg:flex-row gap-6 items-stretch mb-6">
         {/* Left Column: Player and Mobile Chat */}
         <div className="flex-1 min-w-0 flex flex-col gap-4">
-          <HlsPlayer playbackId={channel.playback_id} isLive={isLive} viewerCount={channel.viewer_count || 0} />
+          <HlsPlayer
+            playbackId={channel.playback_id}
+            isLive={isLive}
+            viewerCount={channel.viewer_count || 0}
+            onAnalyserReady={setAnalyser}
+          />
           
           {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
           <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10]">
@@ -443,7 +449,7 @@ export default function Channel() {
                 </div>
 
                 {/* Middle Column: Animated Audio Visualizer */}
-                <AudioVisualizer isLive={isLive} />
+                <AudioVisualizer isLive={isLive} analyser={analyser} />
 
                 {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
                 <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end lg:flex-1">

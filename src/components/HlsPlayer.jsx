@@ -12,6 +12,7 @@ export default function HlsPlayer({
   controls = true,
   poster = null,
   viewerCount = 0,
+  onAnalyserReady = null,
 }) {
   const playerRef = useRef(null);
   const videoRef = useRef(null);
@@ -28,6 +29,17 @@ export default function HlsPlayer({
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
   const [analyser, setAnalyser] = useState(null);
+
+  useEffect(() => {
+    if (onAnalyserReady) {
+      onAnalyserReady(analyser);
+    }
+    return () => {
+      if (onAnalyserReady) {
+        onAnalyserReady(null);
+      }
+    };
+  }, [analyser, onAnalyserReady]);
 
   const offline = !playbackId || !isLive;
   const hlsUrl = playbackId
@@ -89,6 +101,7 @@ export default function HlsPlayer({
         video.removeEventListener("play", setupAudio);
         video.removeEventListener("playing", setupAudio);
       }
+      setAnalyser(null);
     };
   }, [offline, hlsUrl]);
 
