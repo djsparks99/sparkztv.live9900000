@@ -281,7 +281,8 @@ export default function LiveSidebar() {
             map.set(normKey, {
               ...existing,
               ...merged,
-              is_live: Boolean(data.is_live || data.isLive || existing.is_live || existing.isLive),
+              is_live: Boolean(data.is_live || data.isLive),
+              isLive: Boolean(data.is_live || data.isLive),
               viewer_count: data.viewer_count ?? existing.viewer_count ?? 0,
               stream_title: data.stream_title || existing.stream_title,
               category: data.category || existing.category,

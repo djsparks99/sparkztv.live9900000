@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-export function useStableLiveChannels(channels, gracePeriodMs = 6000) {
+export function useStableLiveChannels(channels, gracePeriodMs = 0) {
   const [stableChannels, setStableChannels] = useState(channels);
   const pendingOfflinesRef = useRef({}); // channelUsername/id -> timeoutId
 
@@ -42,7 +42,7 @@ export function useStableLiveChannels(channels, gracePeriodMs = 6000) {
             delete pendingOfflinesRef.current[key];
           }
           updatedStable.push(incoming);
-        } else if (stableLive) {
+        } else if (stableLive && gracePeriodMs > 0) {
           // Channel went offline but is currently stable-live. Start/continue grace period.
           if (!pendingOfflinesRef.current[key]) {
             const timeoutId = setTimeout(() => {

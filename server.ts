@@ -825,30 +825,51 @@ async function getMasterChannel() {
   let chan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
   const user = db.users.get("nsU1v44XFnN3FloJvNePqj6cBG2")!;
 
-  if (!chan) {
+  if (!chan || !chan.ivs_channel_arn || !chan.playback_id || !chan.stream_key) {
     const ivsData = await getOrCreatePersistentIvsChannel("djsparkz");
-    chan = {
-      channel_id: "djsparkz",
-      user_uid: "nsU1v44XFnN3FloJvNePqj6cBG2",
-      username: "djsparkz",
-      display_name: user?.display_name || "djsparkz",
-      photo_url: user?.photo_url || null,
-      thumbnail_url: null,
-      ivs_channel_arn: ivsData.arn,
-      stream_key: ivsData.streamKey,
-      playback_id: ivsData.playbackUrl,
-      stream_title: "djsparkz's Live Stream",
-      category: "music",
-      is_live: false,
-      viewer_count: 0,
-      record_enabled: true,
-      last_updated: new Date().toISOString(),
-      rtmp_url: ivsData.ingestEndpoint,
-      schedules: [],
-      stream_started_at: null,
-    };
+    if (chan) {
+      chan.ivs_channel_arn = chan.ivs_channel_arn || ivsData.arn;
+      chan.stream_key = chan.stream_key || ivsData.streamKey;
+      chan.playback_id = chan.playback_id || ivsData.playbackUrl;
+      chan.rtmp_url = chan.rtmp_url || ivsData.ingestEndpoint;
+    } else {
+      chan = {
+        channel_id: "djsparkz",
+        user_uid: "nsU1v44XFnN3FloJvNePqj6cBG2",
+        username: "djsparkz",
+        display_name: user?.display_name || "djsparkz",
+        photo_url: user?.photo_url || null,
+        thumbnail_url: null,
+        ivs_channel_arn: ivsData.arn,
+        stream_key: ivsData.streamKey,
+        playback_id: ivsData.playbackUrl,
+        stream_title: "djsparkz's Live Stream",
+        category: "music",
+        is_live: false,
+        viewer_count: 0,
+        record_enabled: true,
+        last_updated: new Date().toISOString(),
+        rtmp_url: ivsData.ingestEndpoint,
+        schedules: [],
+        stream_started_at: null,
+      };
+    }
     db.channels.set("djsparkz", chan);
     db.channels.set("nsU1v44XFnN3FloJvNePqj6cBG2", chan);
+    
+    // Persist IVS data to Firestore immediately so it's cached
+    await setFirestoreDocSafe("channels", "djsparkz", {
+      ivs_channel_arn: chan.ivs_channel_arn,
+      stream_key: chan.stream_key,
+      playback_id: chan.playback_id,
+      rtmp_url: chan.rtmp_url,
+    }, true);
+    await setFirestoreDocSafe("channels", "nsU1v44XFnN3FloJvNePqj6cBG2", {
+      ivs_channel_arn: chan.ivs_channel_arn,
+      stream_key: chan.stream_key,
+      playback_id: chan.playback_id,
+      rtmp_url: chan.rtmp_url,
+    }, true);
   } else if (user?.photo_url) {
     chan.photo_url = user.photo_url;
   }
@@ -868,13 +889,28 @@ async function syncMasterChannelLiveStatus(force = false) {
     
     let isLiveAws = false;
     let isLiveFirestore = false;
+    let awsCheckSuccess = false;
 
     if (client && channel?.ivs_channel_arn && !channel.ivs_channel_arn.includes("fallback")) {
       try {
         const response = await client.send(new GetStreamCommand({ channelArn: channel.ivs_channel_arn }));
         isLiveAws = !!response.stream;
+        awsCheckSuccess = true;
       } catch (err: any) {
-        console.error("[IVS Sync] AWS stream check failed:", err.message);
+        const isAuthError =
+          err.name === "UnrecognizedClientException" ||
+          err.name === "AccessDeniedException" ||
+          err.$metadata?.httpStatusCode === 403;
+
+        if (isAuthError) {
+          awsCheckSuccess = false;
+          console.error("[IVS Sync] AWS authentication failed:", err.message);
+        } else {
+          // Any non-auth error (ChannelNotBroadcasting, ResourceNotFound, 404, or deserialization on empty stream) indicates channel is offline
+          isLiveAws = false;
+          awsCheckSuccess = true;
+          console.log(`[IVS Sync] AWS IVS confirmed channel ${channel.username} is offline (${err.name || "ChannelNotBroadcasting"}).`);
+        }
       }
     }
 
@@ -890,8 +926,9 @@ async function syncMasterChannelLiveStatus(force = false) {
       console.warn("[IVS Sync] Failed to read fallback live status from Firestore:", sanitizeErrorMsg(fsErr.message));
     }
 
-    // Force Live Feed Detection: EITHER AWS IVS is live OR Firestore record is live
-    const isLive = isLiveAws || isLiveFirestore;
+    // Force Live Feed Detection: If we successfully verified with AWS IVS API, use that as the single source of truth.
+    // Otherwise (e.g. AWS credentials not configured, fallback channel, or API error), fall back to Firestore state.
+    const isLive = awsCheckSuccess ? isLiveAws : isLiveFirestore;
 
     if (channel.is_live !== isLive || (isLive && !channel.stream_started_at)) {
       channel.is_live = isLive;
@@ -1200,20 +1237,41 @@ async function startServer() {
   app.post("/api/ivs/webhook", async (req, res) => {
     try {
       const payload = req.body || {};
-      const eventName = payload.detail?.event_name || payload.eventName || payload.event || "";
+      const detail = payload.detail || {};
+      const eventName =
+        detail.event_name ||
+        payload.detail_type ||
+        payload["detail-type"] ||
+        payload.eventName ||
+        payload.event ||
+        payload.type ||
+        "";
       console.log("[IVS Webhook] Received webhook event:", eventName, payload);
-      
-      const channel = await getMasterChannel();
-      
-      if (eventName === "Stream End" || eventName === "Session Ended" || eventName.toLowerCase().includes("end") || eventName === "stream.idle") {
-        channel.is_live = false;
+
+      const lowerEvent = String(eventName).toLowerCase();
+      const isStreamEnd =
+        lowerEvent.includes("end") ||
+        lowerEvent.includes("idle") ||
+        lowerEvent.includes("stop") ||
+        lowerEvent.includes("offline") ||
+        lowerEvent.includes("disconnect") ||
+        lowerEvent.includes("failure");
+      const isStreamStart =
+        lowerEvent.includes("start") ||
+        lowerEvent.includes("created") ||
+        lowerEvent.includes("active") ||
+        lowerEvent.includes("live") ||
+        lowerEvent.includes("online");
+
+      if (isStreamEnd && !isStreamStart) {
         await updateFirestoreChannelLiveStatus(false);
-      } else if (eventName === "Stream Start" || eventName === "Session Started" || eventName.toLowerCase().includes("start") || eventName === "stream.started") {
-        channel.is_live = true;
+        console.log("[IVS Webhook] Instantly set channel status to OFFLINE via event:", eventName);
+      } else if (isStreamStart) {
         await updateFirestoreChannelLiveStatus(true);
+        console.log("[IVS Webhook] Instantly set channel status to LIVE via event:", eventName);
       }
-      
-      return res.json({ success: true });
+
+      return res.json({ success: true, processed_event: eventName });
     } catch (err: any) {
       return res.status(500).json({ error: "Webhook processing failed", details: err.message });
     }
