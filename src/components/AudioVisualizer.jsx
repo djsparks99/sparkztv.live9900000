@@ -4,11 +4,30 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 220, height: 32 });
 
-  // Number of frequency bands (increased to 28 for ultra high-density, precise display)
+  // Number of frequency bands
   const numBars = 28;
   const barHeightsRef = useRef(Array(numBars).fill(2));
   const peakHeightsRef = useRef(Array(numBars).fill(2));
   const peakDecayRef = useRef(Array(numBars).fill(0));
+
+  // Sensitivity State (Defaults to 1.0, ranges from 0.2 to 3.0)
+  const [sensitivity, setSensitivity] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sparkz_visualizer_sensitivity");
+      return saved ? parseFloat(saved) : 1.0;
+    }
+    return 1.0;
+  });
+
+  const sensitivityRef = useRef(sensitivity);
+  useEffect(() => {
+    sensitivityRef.current = sensitivity;
+  }, [sensitivity]);
+
+  const handleSensitivityChange = (val) => {
+    setSensitivity(val);
+    localStorage.setItem("sparkz_visualizer_sensitivity", val.toString());
+  };
 
   // Handle resizing or setting correct dimensions
   useEffect(() => {
@@ -77,8 +96,9 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
             }
             const avg = count > 0 ? sum / count : 0;
             
-            // Soft-compression power curve with 90% headroom ceiling to prevent flat-lining at full volume
-            const normalized = avg / 255;
+            // Soft-compression power curve with user gain modulation
+            const currentSens = sensitivityRef.current;
+            const normalized = Math.min(1.0, (avg / 255) * currentSens);
             const peakTarget = Math.pow(normalized, 0.85) * (dimensions.height - 4) * 0.90;
             target = Math.max(2, peakTarget);
           } else {
@@ -149,76 +169,113 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
 
   return (
     <div 
-      ref={containerRef} 
-      className="hidden md:flex flex-col items-center justify-center flex-1 h-9 mx-8 max-w-[240px] select-none"
-      title={isLive ? "Audio Feed active: 44.1kHz" : "Receiver Standby"}
+      className="hidden md:flex flex-col justify-center flex-1 mx-8 max-w-[240px] select-none py-1"
+      title={isLive ? "Audio Feed active. Double click slider to reset GAIN." : "Receiver Standby"}
     >
-      <svg 
-        width={dimensions.width} 
-        height={dimensions.height} 
-        className="overflow-visible"
-      >
-        {/* Horizontal grid lines */}
-        <line 
-          x1={0} 
-          y1={dimensions.height / 2} 
-          x2={dimensions.width} 
-          y2={dimensions.height / 2} 
-          stroke="#27272a" 
-          strokeWidth={0.5} 
-          strokeDasharray="2 3" 
-        />
-        <line 
-          x1={0} 
-          y1={dimensions.height - 1} 
-          x2={dimensions.width} 
-          y2={dimensions.height - 1} 
-          stroke="#27272a" 
-          strokeWidth={0.5} 
-        />
+      {/* Sized container observed for canvas/responsive width */}
+      <div ref={containerRef} className="w-full h-8 flex items-center justify-center">
+        <svg 
+          width={dimensions.width} 
+          height={dimensions.height} 
+          className="overflow-visible"
+        >
+          {/* Horizontal grid lines */}
+          <line 
+            x1={0} 
+            y1={dimensions.height / 2} 
+            x2={dimensions.width} 
+            y2={dimensions.height / 2} 
+            stroke="#27272a" 
+            strokeWidth={0.5} 
+            strokeDasharray="2 3" 
+          />
+          <line 
+            x1={0} 
+            y1={dimensions.height - 1} 
+            x2={dimensions.width} 
+            y2={dimensions.height - 1} 
+            stroke="#27272a" 
+            strokeWidth={0.5} 
+          />
 
-        {/* Draw Equalizer Bars and Peak hold indicators */}
-        {barHeightsRef.current.map((height, i) => {
-          const x = i * (barWidth + padding);
-          const y = dimensions.height - height;
-          const peakY = dimensions.height - peakHeightsRef.current[i];
+          {/* Draw Equalizer Bars and Peak hold indicators */}
+          {barHeightsRef.current.map((height, i) => {
+            const x = i * (barWidth + padding);
+            const y = dimensions.height - height;
+            const peakY = dimensions.height - peakHeightsRef.current[i];
 
-          // Color gradient from yellow to cyan or simple branded theme color #e5ff00
-          // Live gets highly saturated #e5ff00, offline gets a slightly dimmer or desaturated state
-          const barColor = isLive ? "#e5ff00" : "#a1a1aa";
-          const peakColor = isLive ? "#ffffff" : "#71717a";
+            // Color gradient from yellow to cyan or simple branded theme color #e5ff00
+            const barColor = isLive ? "#e5ff00" : "#a1a1aa";
+            const peakColor = isLive ? "#ffffff" : "#71717a";
 
-          return (
-            <g key={i}>
-              {/* Spectrum Bar */}
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={Math.max(1, height)}
-                fill={barColor}
-                opacity={isLive ? 0.85 : 0.4}
-                rx={0.5}
-              />
-              {/* Peak Dot */}
-              <rect
-                x={x}
-                y={Math.max(0, peakY - 1)}
-                width={barWidth}
-                height={1}
-                fill={peakColor}
-                opacity={isLive ? 0.9 : 0.6}
-              />
-            </g>
-          );
-        })}
-      </svg>
+            return (
+              <g key={i}>
+                {/* Spectrum Bar */}
+                <rect
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={Math.max(1, height)}
+                  fill={barColor}
+                  opacity={isLive ? 0.85 : 0.4}
+                  rx={0.5}
+                />
+                {/* Peak Dot */}
+                <rect
+                  x={x}
+                  y={Math.max(0, peakY - 1)}
+                  width={barWidth}
+                  height={1}
+                  fill={peakColor}
+                  opacity={isLive ? 0.9 : 0.6}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
       
       {/* Tiny frequency labels at the very bottom */}
       <div className="w-full flex justify-between text-[6px] font-mono tracking-widest text-zinc-600 mt-0.5 px-0.5">
         <span>32Hz</span>
         <span>500Hz</span>
         <span>16kHz</span>
+      </div>
+
+      {/* Tactile Hardware Gain Control slider */}
+      <div className="w-full flex items-center gap-1.5 mt-1 px-0.5 text-[7px] font-mono text-zinc-500 uppercase tracking-widest">
+        <span className="text-zinc-600 font-bold">GAIN</span>
+        <input
+          type="range"
+          min="0.2"
+          max="3.0"
+          step="0.1"
+          value={sensitivity}
+          onDoubleClick={() => handleSensitivityChange(1.0)}
+          onChange={(e) => handleSensitivityChange(parseFloat(e.target.value))}
+          className="flex-1 appearance-none bg-zinc-850 border border-zinc-800/60 rounded-full h-[5px] cursor-pointer outline-none transition-all
+            [&::-webkit-slider-runnable-track]:bg-transparent
+            [&::-webkit-slider-thumb]:appearance-none
+            [&::-webkit-slider-thumb]:h-2.5
+            [&::-webkit-slider-thumb]:w-2.5
+            [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:bg-[#e5ff00]
+            [&::-webkit-slider-thumb]:shadow-[0_0_4px_#e5ff00]
+            [&::-webkit-slider-thumb]:transition-all
+            [&::-webkit-slider-thumb]:hover:scale-125
+            [&::-moz-range-thumb]:h-2.5
+            [&::-moz-range-thumb]:w-2.5
+            [&::-moz-range-thumb]:border-0
+            [&::-moz-range-thumb]:rounded-full
+            [&::-moz-range-thumb]:bg-[#e5ff00]
+            [&::-moz-range-thumb]:shadow-[0_0_4px_#e5ff00]
+            [&::-moz-range-thumb]:transition-all
+            [&::-moz-range-thumb]:hover:scale-125"
+          title="Adjust visualizer sensitivity (double click to reset)"
+        />
+        <span className="min-w-[28px] text-right font-bold text-[#e5ff00]/90 select-none">
+          {Math.round(sensitivity * 100)}%
+        </span>
       </div>
     </div>
   );
