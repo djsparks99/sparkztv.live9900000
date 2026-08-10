@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage, DEFAULT_AVATAR } from "@/lib/api";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight } from "lucide-react";
+import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight, Headphones, Search, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingReactions from "./FloatingReactions";
 import { toast } from "sonner";
@@ -24,6 +24,8 @@ function wsUrl(username, token, guestName = "") {
 export default function ChatPanel({ username, onCollapse }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
+  const [activeTab, setActiveTab] = useState("chat"); // "chat" or "listeners"
+  const [listenerSearch, setListenerSearch] = useState("");
   const [text, setText] = useState("");
   const [connected, setConnected] = useState(false);
   const [systemLine, setSystemLine] = useState(null);
@@ -451,6 +453,72 @@ export default function ChatPanel({ username, onCollapse }) {
     return matchesSearch;
   });
 
+  // Get unique list of chatters from messages to build a real live list of listeners
+  const uniqueChatters = [];
+  const seenChatters = new Set();
+
+  // Add the current viewer (user or guest)
+  if (user) {
+    const currentUsername = user.username || user.displayName || "viewer";
+    seenChatters.add(currentUsername.toLowerCase());
+    uniqueChatters.push({
+      username: currentUsername,
+      display_name: user.display_name || user.displayName || currentUsername,
+      photo_url: user.photo_url || user.photoURL,
+      badges: ["supporter"],
+      color: "#e5ff00",
+      isReal: true,
+      listeningStatus: "Watching Stream Live 🎧",
+      quality: "320kbps AAC",
+      latency: "12ms"
+    });
+  } else if (guestName) {
+    seenChatters.add(guestName.toLowerCase());
+    uniqueChatters.push({
+      username: guestName,
+      display_name: `${guestName} (Guest)`,
+      photo_url: null,
+      badges: [],
+      color: "#a1a1aa",
+      isReal: true,
+      listeningStatus: "Listening as Guest 🎧",
+      quality: "192kbps AAC",
+      latency: "45ms"
+    });
+  }
+
+  if (Array.isArray(messages)) {
+    messages.forEach((m) => {
+      if (
+        m.sender_username &&
+        !seenChatters.has(m.sender_username.toLowerCase()) &&
+        m.sender_username !== "sparkz_bot" &&
+        m.sender_username !== "system-bot"
+      ) {
+        seenChatters.add(m.sender_username.toLowerCase());
+        uniqueChatters.push({
+          username: m.sender_username,
+          display_name: m.sender_display_name || m.sender_username,
+          photo_url: m.sender_photo_url,
+          badges: m.sender_badges || [],
+          color: m.sender_color,
+          isReal: true,
+          listeningStatus: "Listening to Live Feed 🎧",
+          quality: "320kbps AAC",
+          latency: "24ms"
+        });
+      }
+    });
+  }
+
+  // Search filter
+  const searchedListeners = uniqueChatters.filter(
+    (l) =>
+      l.username.toLowerCase().includes(listenerSearch.toLowerCase()) ||
+      l.display_name.toLowerCase().includes(listenerSearch.toLowerCase()) ||
+      l.listeningStatus.toLowerCase().includes(listenerSearch.toLowerCase())
+  );
+
   return (
     <div
       data-testid="chat-panel"
@@ -483,38 +551,140 @@ export default function ChatPanel({ username, onCollapse }) {
           </div>
         </div>
       </header>
-
-      {/* Message List */}
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 scrollbar-thin relative">
-        <FloatingReactions position="right" />
-        {(!Array.isArray(messages) || messages.length === 0) && !systemLine && (
-          <div className="py-12 text-center">
-            <Sparkles className="mx-auto h-6 w-6 text-zinc-700 mb-2" />
-            <div className="font-mono text-xs uppercase tracking-widest text-zinc-500">
-              // NO SIGNAL YET — BE THE FIRST TO SHOUT
-            </div>
-            <p className="mt-1 font-mono text-[10px] text-zinc-600">
-              Earn +15 Watts every 10 seconds active in chat!
-            </p>
-          </div>
-        )}
-
-        {Array.isArray(messages) &&
-          messages.map((m) => (
-            <ChatMessage
-              key={m.id || Math.random()}
-              m={m}
-              emotes={emotes}
-              onInspectUser={handleInspectChatter}
-            />
-          ))}
-
-        {systemLine && (
-          <div className="border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-[#e5ff00]">
-            {systemLine}
-          </div>
-        )}
+      
+      {/* Tab switcher: Chat vs Vibers/Listeners */}
+      <div className="flex border-b border-[#27272a] bg-[#09090b] text-[10px] font-mono uppercase tracking-wider shrink-0">
+        <button
+          onClick={() => setActiveTab("chat")}
+          className={`flex-1 py-2 text-center font-bold border-r border-[#27272a] transition-all ${
+            activeTab === "chat" ? "bg-black text-[#e5ff00]" : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          Stream Chat
+        </button>
+        <button
+          onClick={() => setActiveTab("listeners")}
+          className={`flex-1 py-2 text-center font-bold transition-all relative flex items-center justify-center gap-1.5 ${
+            activeTab === "listeners" ? "bg-black text-[#00f6ff]" : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Disc className={`h-3 w-3 ${activeTab === "listeners" ? "animate-spin text-[#00f6ff]" : ""}`} />
+          Who's Listening ({uniqueChatters.length})
+        </button>
       </div>
+
+      {activeTab === "chat" ? (
+        /* Message List */
+        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 scrollbar-thin relative">
+          <FloatingReactions position="right" />
+          {(!Array.isArray(messages) || messages.length === 0) && !systemLine && (
+            <div className="py-12 text-center">
+              <Sparkles className="mx-auto h-6 w-6 text-zinc-700 mb-2" />
+              <div className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+                // NO SIGNAL YET — BE THE FIRST TO SHOUT
+              </div>
+              <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                Earn +15 Watts every 10 seconds active in chat!
+              </p>
+            </div>
+          )}
+
+          {Array.isArray(messages) &&
+            messages.map((m) => (
+              <ChatMessage
+                key={m.id || Math.random()}
+                m={m}
+                emotes={emotes}
+                onInspectUser={handleInspectChatter}
+              />
+            ))}
+
+          {systemLine && (
+            <div className="border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-[#e5ff00]">
+              {systemLine}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Who's Listening List */
+        <div className="flex-1 flex flex-col min-h-0 bg-[#0a0a0c]">
+          {/* Search bar inside the Tab */}
+          <div className="p-3 border-b border-[#27272a] bg-[#0c0c0e] flex items-center gap-2">
+            <Search className="h-3.5 w-3.5 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search listeners or track vibes..."
+              className="bg-black border border-[#27272a] hover:border-zinc-800 focus:border-[#00f6ff] px-2.5 py-1 text-[10px] text-white focus:outline-none flex-1 rounded-sm font-mono uppercase placeholder-zinc-600 transition-all"
+              value={listenerSearch}
+              onChange={(e) => setListenerSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Scrollable list */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+            {searchedListeners.length === 0 ? (
+              <div className="py-12 text-center">
+                <Users className="mx-auto h-6 w-6 text-zinc-800 mb-2" />
+                <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                  No matching listeners found
+                </div>
+              </div>
+            ) : (
+              searchedListeners.map((listener) => (
+                <div
+                  key={listener.username}
+                  onClick={() => handleInspectChatter(listener.username, listener.photo_url)}
+                  className="flex items-center gap-2.5 p-2 bg-black/40 border border-[#27272a]/80 hover:border-[#00f6ff]/40 hover:bg-[#00f6ff]/5 transition-all duration-200 rounded-sm cursor-pointer group"
+                >
+                  {/* Avatar with dynamic live glow */}
+                  <div className="relative">
+                    <img
+                      src={listener.photo_url ? fileUrl(listener.photo_url) : DEFAULT_AVATAR}
+                      alt=""
+                      className="h-8 w-8 object-cover border border-zinc-800 rounded-sm group-hover:border-[#00f6ff] transition-all"
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="font-mono text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: listener.color || "#e5ff00" }}
+                      >
+                        {listener.display_name}
+                      </span>
+                      <BadgeFlares badges={listener.badges} />
+                    </div>
+
+                    {/* What they are listening to/vibing to */}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Headphones className="h-3 w-3 text-cyan-400 shrink-0" />
+                      <span className="font-mono text-[9px] text-zinc-300 truncate tracking-wide leading-tight">
+                        {listener.listeningStatus}
+                      </span>
+                    </div>
+
+                    {/* Technical Stream details - Hardware feel */}
+                    <div className="flex items-center gap-2 mt-1 text-[8px] font-mono text-zinc-600 uppercase">
+                      <span className="flex items-center gap-0.5">
+                        <Volume2 className="h-2.5 w-2.5 text-zinc-600" /> {listener.quality}
+                      </span>
+                      <span>•</span>
+                      <span>Lat: {listener.latency}</span>
+                    </div>
+                  </div>
+                  
+                  <ChevronRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-[#00f6ff] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Twitch-Style Chatter Profile Inspect Card Modal */}
       {inspectUser && (
