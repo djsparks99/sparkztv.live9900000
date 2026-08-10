@@ -1033,19 +1033,19 @@ async function syncChannelLiveStatus(usernameOrId?: string, force = false) {
         isLiveAws = !!response.stream;
         awsCheckSuccess = true;
       } catch (err: any) {
-        const isAuthError =
-          err.name === "UnrecognizedClientException" ||
-          err.name === "AccessDeniedException" ||
-          err.$metadata?.httpStatusCode === 403;
+        const isOfflineError =
+          err.name === "ChannelNotBroadcasting" ||
+          err.name === "ResourceNotFoundException" ||
+          err.message?.includes("ChannelNotBroadcasting") ||
+          err.message?.includes("ResourceNotFoundException");
 
-        if (isAuthError) {
-          awsCheckSuccess = false;
-          console.error(`[IVS Sync] AWS authentication failed for ${channel.username}:`, err.message);
-        } else {
-          // Any non-auth error (ChannelNotBroadcasting, ResourceNotFound, 404, or deserialization on empty stream) indicates channel is offline
+        if (isOfflineError) {
           isLiveAws = false;
           awsCheckSuccess = true;
           console.log(`[IVS Sync] AWS IVS confirmed channel ${channel.username} is offline (${err.name || "ChannelNotBroadcasting"}).`);
+        } else {
+          awsCheckSuccess = false;
+          console.error(`[IVS Sync] AWS sync failed or encountered authorization/network issues for ${channel.username}:`, err.name || "Error", err.message);
         }
       }
     }
