@@ -248,7 +248,6 @@ export default function Channel() {
   }, [username, user?.uid]);
 
   useEffect(() => {
-    if (!isLive) return;
     let cancelled = false;
     const beat = async () => {
       try {
@@ -266,7 +265,7 @@ export default function Channel() {
       cancelled = true;
       clearInterval(t);
     };
-  }, [isLive, username]);
+  }, [username]);
 
   if (notFound) {
     return (

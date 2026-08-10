@@ -575,6 +575,7 @@ interface ChannelDoc {
   rtmp_url?: string;
   schedules?: any[];
   tags?: string[];
+  stream_started_at?: string | null;
 }
 
 class InMemStore {
@@ -650,14 +651,6 @@ function getStrictViewerCount(channelId: string, username: string): number {
   // 3. Match with websocket connections
   const wsViewers = activeViewersPerRoom.get(normalizedUser) || activeViewersPerRoom.get(normalizedId);
   const wsCount = wsViewers ? wsViewers.size : 0;
-
-  // If the stream is not live, viewer count must strictly be 0.
-  const matchedChannel = db.channels.get(channelId) || db.channels.get(username);
-  const isChannelLive = matchedChannel ? Boolean(matchedChannel.is_live || matchedChannel.isLive) : false;
-
-  if (!isChannelLive) {
-    return 0;
-  }
 
   return Math.max(heartbeatCount, wsCount);
 }
@@ -746,6 +739,7 @@ async function syncChannelsFromFirestore() {
         rtmp_url: data.rtmp_url || "",
         schedules: data.schedules || [],
         tags: data.tags || [],
+        stream_started_at: data.stream_started_at || null,
       };
       
       db.channels.set(doc.id, channel);
@@ -819,6 +813,7 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
     schedules: c.schedules || [],
     schedule: c.schedules && c.schedules.length > 0 ? c.schedules[0] : null,
     tags: c.tags || [],
+    stream_started_at: c.stream_started_at || null,
   };
 
   if (opts.include_stream_key) {
@@ -854,6 +849,7 @@ async function getMasterChannel() {
       last_updated: new Date().toISOString(),
       rtmp_url: ivsData.ingestEndpoint,
       schedules: [],
+      stream_started_at: null,
     };
     db.channels.set("djsparkz", chan);
     db.channels.set("nsU1v44XFnN3FloJvNePqj6cBG2", chan);
@@ -901,11 +897,16 @@ async function syncMasterChannelLiveStatus(force = false) {
     // Force Live Feed Detection: EITHER AWS IVS is live OR Firestore record is live
     const isLive = isLiveAws || isLiveFirestore;
 
-    if (channel.is_live !== isLive) {
+    if (channel.is_live !== isLive || (isLive && !channel.stream_started_at)) {
       channel.is_live = isLive;
       channel.isLive = isLive;
+      if (isLive) {
+        channel.stream_started_at = channel.stream_started_at || new Date().toISOString();
+      } else {
+        channel.stream_started_at = null;
+      }
       await updateFirestoreChannelLiveStatus(isLive);
-      console.log(`[IVS Sync] Auto-synced live status to ${isLive} for ${channel.username}`);
+      console.log(`[IVS Sync] Auto-synced live status to ${isLive} for ${channel.username} (started_at: ${channel.stream_started_at})`);
     }
   } catch (err: any) {
     console.error("[IVS Sync] Error syncing live status:", err.message);
@@ -1557,17 +1558,27 @@ async function startServer() {
       const channelId = matchedChannel.channel_id || "djsparkz";
       const normalizedChannelId = channelId.toLowerCase();
       
-      // Register current IP address and timestamp
-      if (!activeStreamViewers.has(normalizedChannelId)) {
-        activeStreamViewers.set(normalizedChannelId, new Map());
+      // Register current IP address and timestamp across multiple keys for maximum matching capability
+      const keysToRegister = new Set<string>();
+      if (normalizedChannelId) keysToRegister.add(normalizedChannelId);
+      if (matchedChannel.username) keysToRegister.add(matchedChannel.username.toLowerCase());
+      if (normalizedId) keysToRegister.add(normalizedId);
+
+      for (const k of keysToRegister) {
+        const cleanK = k.trim();
+        if (!cleanK) continue;
+        if (!activeStreamViewers.has(cleanK)) {
+          activeStreamViewers.set(cleanK, new Map());
+        }
+        activeStreamViewers.get(cleanK)!.set(ip, Date.now());
       }
-      activeStreamViewers.get(normalizedChannelId)!.set(ip, Date.now());
 
       const trueViewerCount = getStrictViewerCount(channelId, matchedChannel.username || "");
       matchedChannel.viewer_count = trueViewerCount;
 
       // Persist to Firestore to keep database in sync with real-time strict count
       const docId = matchedChannel.user_uid || matchedChannel.channel_id || matchedChannel.username;
+      const docUsername = matchedChannel.username ? matchedChannel.username.toLowerCase() : "";
       if (docId) {
         try {
           const payload = {
@@ -1576,6 +1587,9 @@ async function startServer() {
           };
           await setFirestoreDocSafe("channels", docId, payload, true);
           
+          if (docUsername && docUsername !== docId.toLowerCase()) {
+            await setFirestoreDocSafe("channels", docUsername, payload, true);
+          }
           if (normalizedId === "djsparkz" || matchedChannel.username === "djsparkz") {
             await setFirestoreDocSafe("channels", "djsparkz", payload, true);
           }
