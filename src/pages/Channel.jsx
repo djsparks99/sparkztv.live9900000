@@ -9,7 +9,6 @@ import ChatPanel from "@/components/ChatPanel";
 import FollowButton from "@/components/FollowButton";
 import SubscribeButton from "@/components/SubscribeButton";
 import ShareButton from "@/components/ShareButton";
-import AudioVisualizer from "@/components/AudioVisualizer";
 import SessionList from "@/components/SessionList";
 import ScheduleDisplay from "@/components/ScheduleDisplay";
 import LiveDuration from "@/components/LiveDuration";
@@ -55,7 +54,6 @@ export default function Channel() {
   const { user } = useAuth();
   const [channel, setChannel] = useState(null);
   const [notFound, setNotFound] = useState(false);
-  const [analyser, setAnalyser] = useState(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -313,7 +311,6 @@ export default function Channel() {
             playbackId={channel.playback_id}
             isLive={isLive}
             viewerCount={channel.viewer_count || 0}
-            onAnalyserReady={setAnalyser}
           />
           
           {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
@@ -447,9 +444,6 @@ export default function Channel() {
                     </div>
                   </div>
                 </div>
-
-                {/* Middle Column: Animated Audio Visualizer */}
-                <AudioVisualizer isLive={isLive} analyser={analyser} />
 
                 {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
                 <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end lg:flex-1">
