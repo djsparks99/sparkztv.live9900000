@@ -331,8 +331,10 @@ export default function Channel() {
       </div>
 
       {/* Row 2: Metadata Bar & Mobile Chat */}
-      <div className="flex flex-col gap-4 mb-6">
-        {/* CHANNEL METADATA BAR - Directly under the player/chat row */}
+      <div className="flex flex-col lg:flex-row gap-6 mb-6">
+        {/* Left Column: Metadata Bar (Aligned with player) */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+          {/* CHANNEL METADATA BAR - Directly under the player/chat row */}
         {(() => {
           const avatarUrl = channel?.photo_url || 
                             channel?.photoUrl || 
@@ -360,9 +362,9 @@ export default function Channel() {
           })();
 
           return (
-            <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
+            <div className="border border-[#27272a] bg-[#0e0e10] py-3 px-4 md:py-3.5 md:px-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
               {isLive && (
-                <div className="absolute top-4 right-4 md:top-5 md:right-5 flex items-center gap-3.5 font-mono text-xs font-bold z-10" data-testid="live-viewer-uptime">
+                <div className="absolute top-3 right-4 md:top-3.5 md:right-5 flex items-center gap-3.5 font-mono text-xs font-bold z-10" data-testid="live-viewer-uptime">
                   <div className="flex items-center gap-1 text-[#ff5c5c]">
                     <User className="h-4 w-4" />
                     <span>{channel.viewer_count || 0}</span>
@@ -380,7 +382,7 @@ export default function Channel() {
                 {/* Left Column: Avatar + Profile details */}
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   {/* Spherically-bounded avatar container */}
-                  <div className="h-14 w-14 md:h-16 md:w-16 rounded-full border-2 border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
+                  <div className="h-12 w-12 md:h-14 md:w-14 rounded-full border-2 border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
                     {resolvedAvatar ? (
                       <img 
                         src={resolvedAvatar} 
@@ -389,13 +391,13 @@ export default function Channel() {
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-[#1e1e22] text-[#e4e4e7] rounded-full font-mono text-base font-black select-none uppercase">
+                      <div className="flex h-full w-full items-center justify-center bg-[#1e1e22] text-[#e4e4e7] rounded-full font-mono text-sm font-black select-none uppercase">
                         {initials}
                       </div>
                     )}
                     {/* Live/Offline status indicator on avatar */}
                     {isLive && (
-                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#e5ff00] border-2 border-[#0e0e10]" />
+                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#e5ff00] border-2 border-[#0e0e10]" />
                     )}
                   </div>
 
@@ -437,7 +439,7 @@ export default function Channel() {
                 </div>
 
                 {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
-                <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end lg:mt-5">
+                <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
                   <FollowButton
                     username={channel.username}
                     isFollowing={channel.is_following}
@@ -455,7 +457,7 @@ export default function Channel() {
                   <Link
                     to="/payouts?buy=true"
                     data-testid="channel-buy-bits-btn"
-                    className="flex items-center gap-1.5 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
+                    className="flex items-center gap-1.5 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-2.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
                     title="Purchase Vinyl Bits to Support DJ"
                   >
                     <Coins className="h-4 w-4 text-[#e5ff00] animate-pulse" />
@@ -469,7 +471,7 @@ export default function Channel() {
                   
                   <button
                     onClick={() => setIsReportModalOpen(true)}
-                    className="btn-ghost inline-flex items-center gap-2 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-2 !px-3"
+                    className="btn-ghost inline-flex items-center gap-2 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-1.5 !px-2.5"
                     title="Report this broadcast"
                   >
                     <Flag className="h-3.5 w-3.5" />
@@ -505,12 +507,47 @@ export default function Channel() {
             <ChatPanel username={channel.username} />
           </div>
         </div>
+        </div>
+
+        {/* Right Column: QR Code Card under the chat (matches its width/styling and is uniform) */}
+        {!isChatCollapsed ? (
+          <div className="hidden lg:block w-[320px] xl:w-[360px] shrink-0">
+            {/* Channel QR Code Card */}
+            <div className="border border-[#27272a] bg-[#0e0e10] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] h-full flex flex-col justify-between" data-testid="channel-qr-card">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-4 w-4 text-[#e5ff00]" />
+                <div className="label-caps mb-0">// CHANNEL QR CODE</div>
+              </div>
+
+              <p className="mt-1 font-mono text-[10px] leading-relaxed text-zinc-400">
+                Scan or share to tune into <code className="text-[#e5ff00]">@{channel.username}</code>.
+              </p>
+
+              <div className="mt-2.5 flex flex-col items-center justify-center border border-dashed border-[#27272a] bg-black p-2">
+                <div className="rounded bg-white p-1.5 shadow-lg">
+                  <QRCodeSVG
+                    value={`${window.location.origin}/channel/${channel.username}`}
+                    size={90}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    level="M"
+                  />
+                </div>
+                <span className="mt-1.5 font-mono text-[9px] text-zinc-500 uppercase tracking-widest truncate max-w-[180px]">
+                  {channel.username}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="hidden lg:block w-10 shrink-0" />
+        )}
       </div>
 
-      {/* Row 2: Secondary Metadata (Schedule & Previous Sessions) & Right Column Cards */}
-      <div className="grid gap-6 lg:grid-cols-12 mt-6">
-        {/* Left Column (Aligns with Player) */}
-        <div className="lg:col-span-9 flex flex-col gap-6">
+      {/* Row 3: Secondary Metadata (Schedule & Previous Sessions) & Right Column Cards */}
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        {/* Left Column (Aligns perfectly with Player and Metadata Bar) */}
+        <div className="flex-1 min-w-0 flex flex-col gap-6">
           {/* Schedule */}
           <div>
             <ScheduleDisplay schedule={channel.schedule} username={channel.username} />
@@ -522,51 +559,28 @@ export default function Channel() {
           </div>
         </div>
 
-        {/* Right Column (Aligns with Chat Panel) */}
-        <aside className="lg:col-span-3 space-y-4">
-          {/* Channel QR Code Card */}
-          <div className="border border-[#27272a] bg-[#0e0e10] p-6" data-testid="channel-qr-card">
-            <div className="flex items-center gap-2">
-              <QrCode className="h-4 w-4 text-[#e5ff00]" />
-              <div className="label-caps mb-0">// CHANNEL QR CODE</div>
+        {/* Right Column (Aligns perfectly with Chat Panel / QR code card) */}
+        <aside className={`${isChatCollapsed ? "lg:w-10" : "lg:w-[320px] xl:w-[360px]"} w-full shrink-0 flex flex-col gap-4`}>
+          {!isChatCollapsed ? (
+            <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+              <div className="label-caps">// STREAM INFO</div>
+              <dl className="mt-4 space-y-3 font-mono text-xs">
+                <Row label="STATUS">{isLive ? "LIVE" : "OFF AIR"}</Row>
+                <Row label="CATEGORY">{channel.category}</Row>
+                <Row label="VIEWERS">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Eye className="h-3.5 w-3.5 text-[#e5ff00]" />
+                    <span>{channel.viewer_count || 0}</span>
+                  </span>
+                </Row>
+                <Row label="PLAYBACK ID" mono>
+                  {channel.playback_id}
+                </Row>
+              </dl>
             </div>
-
-            <p className="mt-2 font-mono text-[11px] leading-relaxed text-zinc-400">
-               Scan or share to tune into <code className="text-[#e5ff00]">@{channel.username}</code>.
-            </p>
-
-            <div className="mt-4 flex flex-col items-center justify-center border border-dashed border-[#27272a] bg-black p-4">
-              <div className="rounded bg-white p-2.5 shadow-lg">
-                <QRCodeSVG
-                  value={`${window.location.origin}/channel/${channel.username}`}
-                  size={130}
-                  bgColor="#ffffff"
-                  fgColor="#000000"
-                  level="M"
-                />
-              </div>
-              <span className="mt-2 font-mono text-[9px] text-zinc-500 uppercase tracking-widest truncate max-w-[200px]">
-                {window.location.origin}/channel/{channel.username}
-              </span>
-            </div>
-          </div>
-
-          <div className="border border-[#27272a] bg-[#0e0e10] p-6">
-            <div className="label-caps">// STREAM INFO</div>
-            <dl className="mt-4 space-y-3 font-mono text-xs">
-              <Row label="STATUS">{isLive ? "LIVE" : "OFF AIR"}</Row>
-              <Row label="CATEGORY">{channel.category}</Row>
-              <Row label="VIEWERS">
-                <span className="inline-flex items-center gap-1.5">
-                  <Eye className="h-3.5 w-3.5 text-[#e5ff00]" />
-                  <span>{channel.viewer_count || 0}</span>
-                </span>
-              </Row>
-              <Row label="PLAYBACK ID" mono>
-                {channel.playback_id}
-              </Row>
-            </dl>
-          </div>
+          ) : (
+            <div className="hidden lg:block w-10 shrink-0" />
+          )}
         </aside>
       </div>
 

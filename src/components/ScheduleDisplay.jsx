@@ -4,7 +4,7 @@ import { fileUrl } from "@/lib/api";
 export default function ScheduleDisplay({ schedule, username }) {
   if (!schedule || !Array.isArray(schedule) || schedule.length === 0) {
     return (
-      <div className="border border-[#27272a] bg-[#0a0a0a] p-6" data-testid="channel-schedule-display">
+      <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]" data-testid="channel-schedule-display">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-[#e5ff00]" />
           <div className="label-caps mb-0">// BROADCAST SCHEDULE</div>
@@ -19,7 +19,7 @@ export default function ScheduleDisplay({ schedule, username }) {
   }
 
   return (
-    <div className="border border-[#27272a] bg-[#0a0a0a] p-6" data-testid="channel-schedule-display">
+    <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]" data-testid="channel-schedule-display">
       <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-[#e5ff00]" />
