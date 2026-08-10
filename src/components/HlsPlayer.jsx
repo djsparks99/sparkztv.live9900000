@@ -11,6 +11,7 @@ export default function HlsPlayer({
   streamTitle = "Live Stream",
   controls = true,
   poster = null,
+  viewerCount = 0,
 }) {
   const playerRef = useRef(null);
   const videoRef = useRef(null);
@@ -257,6 +258,17 @@ export default function HlsPlayer({
 
           {/* Floating Reactions overlay */}
           <FloatingReactions position="right" />
+
+          {/* Mobile Viewer Count Overlay inside the player */}
+          {isLive && typeof viewerCount === "number" && (
+            <div className="absolute top-4 right-4 z-20 block lg:hidden bg-black/75 border border-[#e5ff00]/30 px-2 py-0.5 rounded font-mono text-[10px] font-bold text-[#e5ff00] backdrop-blur-sm shadow-md flex items-center gap-1.5 animate-pulse">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e5ff00] opacity-75"></span>
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#e5ff00]"></span>
+              </span>
+              <span>{viewerCount} VIEWERS</span>
+            </div>
+          )}
 
           {/* Initial Muted Autoplay Warning Banner if Muted */}
           {controls && isMuted && isPlaying && (

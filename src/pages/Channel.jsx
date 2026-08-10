@@ -305,9 +305,16 @@ export default function Channel() {
 
       {/* Row 1: Player & Chat Panel */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch mb-6">
-        {/* Left Column: Player only */}
-        <div className="flex-1 min-w-0">
-          <HlsPlayer playbackId={channel.playback_id} isLive={isLive} />
+        {/* Left Column: Player and Mobile Chat */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+          <HlsPlayer playbackId={channel.playback_id} isLive={isLive} viewerCount={channel.viewer_count || 0} />
+          
+          {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
+          <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10]">
+            <div className="h-[400px] sm:h-[485px]">
+              <ChatPanel username={channel.username} />
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Desktop Collapsible Chat (Matches player height perfectly) */}
@@ -402,7 +409,7 @@ export default function Channel() {
                           </span>
                           
                           {/* Inline live viewer count and uptime directly next to badge */}
-                          <div className="flex items-center gap-2 font-mono text-[10px] font-bold text-zinc-400 bg-zinc-900/80 px-1.5 py-0.5 border border-zinc-800/80 rounded h-4" data-testid="live-viewer-uptime">
+                          <div className="hidden lg:flex items-center gap-2 font-mono text-[10px] font-bold text-zinc-400 bg-zinc-900/80 px-1.5 py-0.5 border border-zinc-800/80 rounded h-4" data-testid="live-viewer-uptime">
                             <div className="flex items-center gap-0.5 text-[#ff5c5c]">
                               <User className="h-3 w-3" />
                               <span>{channel.viewer_count || 0}</span>
@@ -502,13 +509,6 @@ export default function Channel() {
             </div>
           );
         })()}
-
-        {/* MOBILE CHAT PLACEMENT: Sits directly under the video player metadata on mobile views */}
-        <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10]">
-          <div className="h-[400px] sm:h-[485px]">
-            <ChatPanel username={channel.username} />
-          </div>
-        </div>
         </div>
 
         {/* Right Column: QR Code Card under the chat (matches its width/styling and is uniform) */}
@@ -562,7 +562,7 @@ export default function Channel() {
         </div>
 
         {/* Right Column (Aligns perfectly with Chat Panel / QR code card) */}
-        <aside className={`${isChatCollapsed ? "lg:w-10" : "lg:w-[320px] xl:w-[360px]"} w-full shrink-0 flex flex-col gap-4`}>
+        <aside className={`${isChatCollapsed ? "lg:w-10" : "lg:w-[320px] xl:w-[360px]"} hidden lg:flex shrink-0 flex-col gap-4`}>
           {!isChatCollapsed ? (
             <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
               <div className="label-caps">// STREAM INFO</div>
