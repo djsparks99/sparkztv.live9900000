@@ -648,11 +648,7 @@ function getStrictViewerCount(channelId: string, username: string): number {
     heartbeatsUser ? heartbeatsUser.size : 0
   );
 
-  // 3. Match with websocket connections
-  const wsViewers = activeViewersPerRoom.get(normalizedUser) || activeViewersPerRoom.get(normalizedId);
-  const wsCount = wsViewers ? wsViewers.size : 0;
-
-  return Math.max(heartbeatCount, wsCount);
+  return heartbeatCount;
 }
 
 const storiesStore = new Map<string, any>();
@@ -930,8 +926,57 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+async function cleanupOtherChannels() {
+  try {
+    console.log("[Startup Cleanup] Starting cleanup of other channels...");
+    const docs = await getFirestoreCollectionSafe("channels");
+    let count = 0;
+    for (const doc of docs) {
+      const docId = doc.id;
+      const data = doc.data();
+      const username = (data?.username || "").toLowerCase().trim();
+      const userUid = (data?.user_uid || data?.userUid || "").trim();
+
+      // We preserve "djsparkz" and owner's UID: "nsU1v44XFnN3FloJvNePqj6cBG2"
+      const isOwnerDoc = docId === "djsparkz" || docId === "nsU1v44XFnN3FloJvNePqj6cBG2" ||
+                          username === "djsparkz" || username === "nsu1v44xfnn3flojvnepqj6cbg2" ||
+                          userUid === "nsU1v44XFnN3FloJvNePqj6cBG2";
+
+      if (!isOwnerDoc) {
+        console.log(`[Startup Cleanup] Deleting channel doc: ${docId} (username: ${username}, uid: ${userUid})`);
+        await deleteFirestoreDocSafe("channels", docId);
+        count++;
+      }
+    }
+    console.log(`[Startup Cleanup] Finished. Deleted ${count} non-owner channels from Firestore.`);
+
+    // Let's also do the same for the users collection!
+    const userDocs = await getFirestoreCollectionSafe("users");
+    let userCount = 0;
+    for (const uDoc of userDocs) {
+      const uDocId = uDoc.id;
+      const uData = uDoc.data();
+      const uUsername = (uData?.username || "").toLowerCase().trim();
+
+      const isOwnerUser = uDocId === "nsU1v44XFnN3FloJvNePqj6cBG2" || uUsername === "djsparkz";
+
+      if (!isOwnerUser) {
+        console.log(`[Startup Cleanup] Deleting user doc: ${uDocId} (username: ${uUsername})`);
+        await deleteFirestoreDocSafe("users", uDocId);
+        userCount++;
+      }
+    }
+    console.log(`[Startup Cleanup] Finished. Deleted ${userCount} non-owner users from Firestore.`);
+  } catch (err: any) {
+    console.warn("[Startup Cleanup] Error running channels/users cleanup:", err.message);
+  }
+}
+
 async function startServer() {
   db.channels.clear();
+  
+  // Clean up other channels and users on startup
+  await cleanupOtherChannels();
   
   // Load persisted Firestore records FIRST, then load master channel in background
   syncUsersFromFirestore()
@@ -1019,9 +1064,88 @@ async function startServer() {
         return res.json(channelPublic(channel, { include_stream_key: true }));
       }
 
-      const channelInMem = db.channels.get(requestedId) || Array.from(db.channels.values()).find(
+      let channelInMem = db.channels.get(requestedId) || Array.from(db.channels.values()).find(
         (c) => (c.username || "").toLowerCase() === normalizedId
       );
+
+      if (!channelInMem) {
+        // Try fetching dynamically from Firestore
+        let fsDoc = await getFirestoreDocSafe("channels", requestedId);
+        if (!fsDoc || !fsDoc.exists) {
+          fsDoc = await getFirestoreDocSafe("channels", normalizedId);
+        }
+        if (fsDoc && fsDoc.exists) {
+          const data = fsDoc.data();
+          if (data) {
+            const channel: ChannelDoc = {
+              channel_id: data.channel_id || fsDoc.id,
+              user_uid: data.user_uid || "",
+              username: data.username || "",
+              display_name: data.display_name || "",
+              photo_url: data.photo_url || data.photoUrl || null,
+              thumbnail_url: data.thumbnail_url || null,
+              ivs_channel_arn: data.ivs_channel_arn || "",
+              stream_key: data.stream_key || "",
+              playback_id: data.playback_id || data.playbackId || "",
+              stream_title: data.stream_title || "",
+              category: data.category || "music",
+              is_live: data.is_live !== undefined ? data.is_live : false,
+              viewer_count: data.viewer_count !== undefined ? data.viewer_count : 0,
+              record_enabled: data.record_enabled !== undefined ? data.record_enabled : true,
+              last_updated: data.last_updated || new Date().toISOString(),
+              rtmp_url: data.rtmp_url || "",
+              schedules: data.schedules || [],
+              tags: data.tags || [],
+              stream_started_at: data.stream_started_at || null,
+            };
+            db.channels.set(fsDoc.id, channel);
+            if (channel.username) {
+              db.channels.set(channel.username, channel);
+              db.channels.set(channel.username.toLowerCase(), channel);
+            }
+            channelInMem = channel;
+          }
+        }
+
+        // Fallback: Scan full channels collection to match by username if direct document id lookup didn't match
+        if (!channelInMem) {
+          const allDocs = await getFirestoreCollectionSafe("channels");
+          const matchedDoc = allDocs.find((d) => {
+            const dData = d.data();
+            return dData && (dData.username || "").toLowerCase() === normalizedId;
+          });
+          if (matchedDoc) {
+            const data = matchedDoc.data();
+            const channel: ChannelDoc = {
+              channel_id: data.channel_id || matchedDoc.id,
+              user_uid: data.user_uid || "",
+              username: data.username || "",
+              display_name: data.display_name || "",
+              photo_url: data.photo_url || data.photoUrl || null,
+              thumbnail_url: data.thumbnail_url || null,
+              ivs_channel_arn: data.ivs_channel_arn || "",
+              stream_key: data.stream_key || "",
+              playback_id: data.playback_id || data.playbackId || "",
+              stream_title: data.stream_title || "",
+              category: data.category || "music",
+              is_live: data.is_live !== undefined ? data.is_live : false,
+              viewer_count: data.viewer_count !== undefined ? data.viewer_count : 0,
+              record_enabled: data.record_enabled !== undefined ? data.record_enabled : true,
+              last_updated: data.last_updated || new Date().toISOString(),
+              rtmp_url: data.rtmp_url || "",
+              schedules: data.schedules || [],
+              tags: data.tags || [],
+              stream_started_at: data.stream_started_at || null,
+            };
+            db.channels.set(matchedDoc.id, channel);
+            if (channel.username) {
+              db.channels.set(channel.username, channel);
+              db.channels.set(channel.username.toLowerCase(), channel);
+            }
+            channelInMem = channel;
+          }
+        }
+      }
 
       if (channelInMem && !isDummyOrInvalid(channelInMem)) {
         return res.json(channelPublic(channelInMem, { include_stream_key: true }));

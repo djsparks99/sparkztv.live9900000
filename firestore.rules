@@ -13,7 +13,10 @@ service cloud.firestore {
     // Channels
     match /channels/{channelId} {
       allow read: if true;
-      allow create, update: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewer_count', 'is_live', 'isLive', 'last_updated', 'stream_started_at'])
+      );
       allow delete: if false;
     }
     
