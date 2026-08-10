@@ -4,8 +4,8 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 220, height: 32 });
 
-  // Number of frequency bands
-  const numBars = 16;
+  // Number of frequency bands (increased to 28 for ultra high-density, precise display)
+  const numBars = 28;
   const barHeightsRef = useRef(Array(numBars).fill(2));
   const peakHeightsRef = useRef(Array(numBars).fill(2));
   const peakDecayRef = useRef(Array(numBars).fill(0));
@@ -60,10 +60,10 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
 
         if (isLive) {
           if (hasSignal && dataArray) {
-            // Logarithmic/exponential spacing for 16 bars over 64 bins
+            // Logarithmic/exponential spacing for bars over the frequency spectrum
             const totalBins = dataArray.length;
-            const startRatio = Math.pow(i / numBars, 1.5);
-            const endRatio = Math.pow((i + 1) / numBars, 1.5);
+            const startRatio = Math.pow(i / numBars, 1.6);
+            const endRatio = Math.pow((i + 1) / numBars, 1.6);
             
             let startBin = Math.floor(startRatio * totalBins);
             let endBin = Math.floor(endRatio * totalBins);
@@ -77,15 +77,14 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
             }
             const avg = count > 0 ? sum / count : 0;
             
-            // Scale and add visual pop boost
-            const peakTarget = (avg / 255) * (dimensions.height - 4) * 1.35;
+            // Soft-compression power curve with 90% headroom ceiling to prevent flat-lining at full volume
+            const normalized = avg / 255;
+            const peakTarget = Math.pow(normalized, 0.85) * (dimensions.height - 4) * 0.90;
             target = Math.max(2, peakTarget);
           } else {
             // Dynamic music pattern when live (fallback/muted)
-            // Sub-bass (left side) pulses heavily
-            const isBass = i < 3;
-            const isMid = i >= 3 && i < 11;
-            const isTreble = i >= 11;
+            const isBass = i < Math.floor(numBars * 0.15);
+            const isMid = i >= Math.floor(numBars * 0.15) && i < Math.floor(numBars * 0.65);
 
             if (isBass) {
               // Pulsing bass beat + rumble
@@ -145,8 +144,8 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
   }, [isLive, dimensions.height, analyser]);
 
   // Compute SVG elements
-  const barWidth = Math.max(2, (dimensions.width / numBars) - 2);
-  const padding = 2;
+  const padding = 1.5;
+  const barWidth = Math.max(1.5, (dimensions.width - (numBars - 1) * padding) / numBars);
 
   return (
     <div 
