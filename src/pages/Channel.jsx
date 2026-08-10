@@ -311,6 +311,9 @@ export default function Channel() {
             playbackId={channel.playback_id}
             isLive={isLive}
             viewerCount={channel.viewer_count || 0}
+            isSubscriber={channel?.is_subscribed}
+            isPro={user?.is_pro}
+            username={channel?.username}
           />
           
           {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
@@ -742,13 +745,18 @@ export default function Channel() {
                   
                   <button
                     onClick={async () => {
-                      setChannel(prev => ({
-                        ...prev,
-                        is_subscribed: false,
-                        subscriber_count: Math.max(0, (prev.subscriber_count || 0) - 1)
-                      }));
-                      toast.success(`Successfully unsubscribed from @${channel.username}.`);
-                      setIsManageSubOpen(false);
+                      try {
+                        const { data } = await api.delete(`/channels/${channel.username}/subscribe`);
+                        setChannel(prev => ({
+                          ...prev,
+                          is_subscribed: false,
+                          subscriber_count: typeof data.subscriber_count === "number" ? data.subscriber_count : Math.max(0, (prev.subscriber_count || 0) - 1)
+                        }));
+                        toast.success(`Successfully unsubscribed from @${channel.username}.`);
+                        setIsManageSubOpen(false);
+                      } catch (err) {
+                        toast.error(err.response?.data?.error || "Failed to unsubscribe.");
+                      }
                     }}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-mono text-xs uppercase tracking-wider py-2.5 transition-colors font-bold"
                   >
@@ -763,13 +771,18 @@ export default function Channel() {
                   
                   <button
                     onClick={async () => {
-                      setChannel(prev => ({
-                        ...prev,
-                        is_subscribed: true,
-                        subscriber_count: (prev.subscriber_count || 0) + 1
-                      }));
-                      toast.success(`Subscribed to @${channel.username}! Welcome to the inner circle.`);
-                      setIsManageSubOpen(false);
+                      try {
+                        const { data } = await api.post(`/channels/${channel.username}/subscribe`);
+                        setChannel(prev => ({
+                          ...prev,
+                          is_subscribed: true,
+                          subscriber_count: typeof data.subscriber_count === "number" ? data.subscriber_count : ((prev.subscriber_count || 0) + 1)
+                        }));
+                        toast.success(`Subscribed to @${channel.username}! Welcome to the inner circle.`);
+                        setIsManageSubOpen(false);
+                      } catch (err) {
+                        toast.error(err.response?.data?.error || "Failed to subscribe. Please load Vinyl Bits first.");
+                      }
                     }}
                     className="w-full bg-[#9146ff] hover:bg-[#772ce8] text-white font-mono text-xs uppercase tracking-wider py-2.5 transition-colors font-bold flex items-center justify-center gap-2"
                   >

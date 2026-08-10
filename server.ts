@@ -2115,6 +2115,8 @@ async function startServer() {
           user.accumulated_bits_balance = firestoreData.accumulated_bits_balance !== undefined ? firestoreData.accumulated_bits_balance : 0;
           user.payout_method = firestoreData.payout_method || null;
           user.payout_details = firestoreData.payout_details || null;
+          user.is_pro = firestoreData.is_pro !== undefined ? firestoreData.is_pro : false;
+          user.subscriptions = firestoreData.subscriptions || [];
           db.users.set(user.uid, user);
         }
       } else {
@@ -2125,12 +2127,16 @@ async function startServer() {
         if (typeof user.accumulated_bits_balance === "undefined") {
           user.accumulated_bits_balance = 0;
         }
+        user.is_pro = user.is_pro || false;
+        user.subscriptions = user.subscriptions || [];
         db.users.set(user.uid, user);
         await setFirestoreDocSafe("users", user.uid, {
           vinyl_bits: user.vinyl_bits,
           accumulated_bits_balance: user.accumulated_bits_balance,
           payout_method: user.payout_method || null,
           payout_details: user.payout_details || null,
+          is_pro: user.is_pro,
+          subscriptions: user.subscriptions,
         }, true, req.authToken);
       }
     } catch (err) {
@@ -2142,6 +2148,8 @@ async function startServer() {
       accumulated_bits_balance: user.accumulated_bits_balance || 0,
       payout_method: user.payout_method || null,
       payout_details: user.payout_details || null,
+      is_pro: user.is_pro || false,
+      subscriptions: user.subscriptions || [],
     });
   });
 
@@ -2579,6 +2587,217 @@ async function startServer() {
       success: true,
       vinyl_bits: user.vinyl_bits,
       message: `Successfully dropped ${amt} Vinyl Bits!`
+    });
+  });
+
+  // Monetization Subscription and PRO API Endpoints
+  api.post("/channels/:username/subscribe", authMiddleware, async (req: any, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const targetUsername = req.params.username;
+    const normalizedTarget = targetUsername.toLowerCase();
+    
+    if (user.username.toLowerCase() === normalizedTarget) {
+      return res.status(400).json({ error: "You cannot subscribe to your own channel!" });
+    }
+    
+    // Find streamer user
+    let streamer: any = null;
+    for (const u of db.users.values()) {
+      if (u.username.toLowerCase() === normalizedTarget) {
+        streamer = u;
+        break;
+      }
+    }
+    
+    if (!streamer) {
+      return res.status(404).json({ error: "Streamer not found" });
+    }
+    
+    if (typeof user.vinyl_bits === "undefined") {
+      user.vinyl_bits = 0;
+    }
+    
+    // Check if already subscribed
+    if (!user.subscriptions) {
+      user.subscriptions = [];
+    }
+    if (user.subscriptions.includes(normalizedTarget)) {
+      return res.status(400).json({ error: "You are already subscribed to this channel!" });
+    }
+    
+    const cost = 500; // Subscribing costs 500 Vinyl Bits
+    if (user.vinyl_bits < cost) {
+      return res.status(400).json({ error: "Insufficient Vinyl Bits. Please load some first!" });
+    }
+    
+    // Deduct cost
+    user.vinyl_bits -= cost;
+    user.subscriptions.push(normalizedTarget);
+    db.users.set(user.uid, user);
+    
+    // Credit streamer
+    streamer.accumulated_bits_balance = (streamer.accumulated_bits_balance || 0) + cost;
+    db.users.set(streamer.uid, streamer);
+    
+    // Update streamer's channel subscriber count
+    let channelInMem = db.channels.get(normalizedTarget) || Array.from(db.channels.values()).find(
+      (c) => (c.username || "").toLowerCase() === normalizedTarget
+    );
+    if (channelInMem) {
+      channelInMem.subscriber_count = (channelInMem.subscriber_count || 0) + 1;
+      db.channels.set(channelInMem.channel_id, channelInMem);
+      if (channelInMem.username) {
+        db.channels.set(channelInMem.username.toLowerCase(), channelInMem);
+      }
+      await setFirestoreDocSafe("channels", channelInMem.channel_id, { subscriber_count: channelInMem.subscriber_count }, true, req.authToken);
+    }
+    
+    // Save users to Firestore
+    await setFirestoreDocSafe("users", user.uid, { vinyl_bits: user.vinyl_bits, subscriptions: user.subscriptions }, true, req.authToken);
+    await setFirestoreDocSafe("users", streamer.uid, { accumulated_bits_balance: streamer.accumulated_bits_balance }, true, req.authToken);
+    
+    // Broadcast a sweet system alert to the chat room
+    const messageId = "sub-alert-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
+    const alertMessage = {
+      type: "message",
+      id: messageId,
+      text: `🎉 ${user.display_name || user.username} just subscribed! Welcome to the inner circle! 👑✨`,
+      sender_uid: "system-bot",
+      sender_username: "sparkz_bot",
+      sender_display_name: "SPARKZ BOT",
+      sender_photo_url: null,
+      created_at: new Date().toISOString(),
+      is_highlighted: true,
+      sender_badges: ["system"],
+      sender_color: "#e5ff00"
+    };
+    
+    // Add to history
+    if (!chatHistory.has(normalizedTarget)) {
+      chatHistory.set(normalizedTarget, []);
+    }
+    chatHistory.get(normalizedTarget)!.push(alertMessage);
+    if (chatHistory.get(normalizedTarget)!.length > 100) {
+      chatHistory.get(normalizedTarget)!.shift();
+    }
+    
+    // Broadcast
+    const roomClients = chatRooms.get(normalizedTarget);
+    if (roomClients) {
+      const payload = JSON.stringify(alertMessage);
+      for (const client of roomClients) {
+        if (client.ws.readyState === 1) {
+          client.ws.send(payload);
+        }
+      }
+    }
+    
+    return res.json({
+      is_subscribed: true,
+      subscriber_count: channelInMem ? channelInMem.subscriber_count : 1,
+      vinyl_bits: user.vinyl_bits
+    });
+  });
+
+  api.delete("/channels/:username/subscribe", authMiddleware, async (req: any, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const targetUsername = req.params.username;
+    const normalizedTarget = targetUsername.toLowerCase();
+    
+    if (!user.subscriptions) {
+      user.subscriptions = [];
+    }
+    
+    if (!user.subscriptions.includes(normalizedTarget)) {
+      return res.status(400).json({ error: "You are not subscribed to this channel!" });
+    }
+    
+    // Remove subscription
+    user.subscriptions = user.subscriptions.filter((s: string) => s !== normalizedTarget);
+    db.users.set(user.uid, user);
+    
+    // Update streamer's channel subscriber count
+    let channelInMem = db.channels.get(normalizedTarget) || Array.from(db.channels.values()).find(
+      (c) => (c.username || "").toLowerCase() === normalizedTarget
+    );
+    if (channelInMem) {
+      channelInMem.subscriber_count = Math.max(0, (channelInMem.subscriber_count || 0) - 1);
+      db.channels.set(channelInMem.channel_id, channelInMem);
+      if (channelInMem.username) {
+        db.channels.set(channelInMem.username.toLowerCase(), channelInMem);
+      }
+      await setFirestoreDocSafe("channels", channelInMem.channel_id, { subscriber_count: channelInMem.subscriber_count }, true, req.authToken);
+    }
+    
+    // Save to Firestore
+    await setFirestoreDocSafe("users", user.uid, { subscriptions: user.subscriptions }, true, req.authToken);
+    
+    return res.json({
+      is_subscribed: false,
+      subscriber_count: channelInMem ? channelInMem.subscriber_count : 0,
+    });
+  });
+
+  api.post("/users/me/pro/upgrade", authMiddleware, async (req: any, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    if (user.is_pro) {
+      return res.status(400).json({ error: "You are already a SPARKZ PRO member!" });
+    }
+    
+    if (typeof user.vinyl_bits === "undefined") {
+      user.vinyl_bits = 0;
+    }
+    
+    const proCost = 1000; // 1000 Bits
+    if (user.vinyl_bits < proCost) {
+      return res.status(400).json({ error: "Insufficient Vinyl Bits. Please load some first!" });
+    }
+    
+    user.vinyl_bits -= proCost;
+    user.is_pro = true;
+    db.users.set(user.uid, user);
+    
+    await setFirestoreDocSafe("users", user.uid, { vinyl_bits: user.vinyl_bits, is_pro: true }, true, req.authToken);
+    
+    return res.json({
+      success: true,
+      message: "Congratulations! You are now a SPARKZ PRO member! 👑✨",
+      is_pro: true,
+      vinyl_bits: user.vinyl_bits
+    });
+  });
+
+  api.post("/users/me/pro/cancel", authMiddleware, async (req: any, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    if (!user.is_pro) {
+      return res.status(400).json({ error: "You do not have an active SPARKZ PRO membership." });
+    }
+    
+    user.is_pro = false;
+    db.users.set(user.uid, user);
+    
+    await setFirestoreDocSafe("users", user.uid, { is_pro: false }, true, req.authToken);
+    
+    return res.json({
+      success: true,
+      message: "Your SPARKZ PRO membership has been cancelled.",
+      is_pro: false
     });
   });
 
@@ -3463,6 +3682,12 @@ async function startServer() {
           if (username === roomName) {
             badges.push("broadcaster");
           }
+          if (localUser.is_pro) {
+            badges.push("pro");
+          }
+          if (localUser.subscriptions && localUser.subscriptions.includes(roomName.toLowerCase())) {
+            badges.push("subscriber");
+          }
           if (wattsVal >= 1000) {
             badges.push("watts_king");
           }
@@ -3569,7 +3794,10 @@ async function startServer() {
               highlight_type: highlightType,
               sender_badges: client.badges,
               sender_color: client.color,
-              user_watts: wattsVal
+              user_watts: wattsVal,
+              parent_message_id: data.parent_message_id || null,
+              parent_message_text: data.parent_message_text || null,
+              parent_message_sender: data.parent_message_sender || null,
             };
 
             if (!chatHistory.has(roomName)) {

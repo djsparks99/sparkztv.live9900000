@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
-import { Play, Pause, Volume2, VolumeX, Maximize, Radio, Settings, Square } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Radio, Settings, Square, Sparkles } from "lucide-react";
 import FloatingReactions from "./FloatingReactions";
 
 export default function HlsPlayer({
@@ -13,6 +13,9 @@ export default function HlsPlayer({
   poster = null,
   viewerCount = 0,
   onAnalyserReady = null,
+  isSubscriber = false,
+  isPro = false,
+  username = "",
 }) {
   const playerRef = useRef(null);
   const videoRef = useRef(null);
@@ -25,6 +28,32 @@ export default function HlsPlayer({
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [hlsSupported, setHlsSupported] = useState(true);
+
+  // Ad/Sponsor Overlay States
+  const [adCountdown, setAdCountdown] = useState(10);
+  const [showAd, setShowAd] = useState(false);
+
+  // Trigger ad if user is not pro and not subscriber
+  useEffect(() => {
+    if (playbackId && isLive && !isSubscriber && !isPro) {
+      setShowAd(true);
+      setAdCountdown(10);
+    } else {
+      setShowAd(false);
+    }
+  }, [playbackId, isLive, isSubscriber, isPro]);
+
+  useEffect(() => {
+    if (!showAd) return;
+    if (adCountdown <= 0) {
+      setShowAd(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setAdCountdown(prev => prev - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [showAd, adCountdown]);
 
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
@@ -293,6 +322,58 @@ export default function HlsPlayer({
               <VolumeX className="h-4 w-4" />
               CLICK TO UNMUTE AUDIO
             </button>
+          )}
+
+          {/* Retro-Styled Sponsor/Ad Overlay */}
+          {showAd && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 border-2 border-[#e5ff00]/60 p-6 animate-fade-in backdrop-blur-sm select-text">
+              <div className="absolute top-2 left-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#e5ff00] animate-pulse" />
+                SPONSOR ADVERTISEMENT · {adCountdown}s REMAINING
+              </div>
+              <div className="absolute top-2 right-3 font-mono text-[9px] text-[#e5ff00] border border-[#e5ff00]/40 px-1.5 py-0.5 rounded uppercase font-bold">
+                SPARKZ TV PARTNER
+              </div>
+
+              <div className="text-center max-w-md space-y-4 font-mono">
+                <div className="mx-auto h-12 w-12 rounded-full bg-[#e5ff00]/10 border border-[#e5ff00]/30 flex items-center justify-center animate-bounce">
+                  <Sparkles className="h-6 w-6 text-[#e5ff00]" />
+                </div>
+                <div>
+                  <h3 className="font-display font-black text-sm text-white uppercase tracking-wider">
+                    UPGRADE TO <span className="text-[#e5ff00]">SPARKZ PRO</span>
+                  </h3>
+                  <p className="text-[10px] text-zinc-400 mt-2 leading-relaxed uppercase">
+                    100% AD-FREE STREAMS, EXCLUSIVE MIX PINNING IN THE LOUNGE, GLOWING CHAT BADGES, AND PREMIUM CHAT FLARES.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-2">
+                  <a
+                    href="/payouts?buy=true"
+                    className="bg-[#e5ff00] text-black px-4 py-2 text-[10px] uppercase font-black tracking-widest hover:bg-white transition-all text-center"
+                  >
+                    UPGRADE FOR 1000 BITS
+                  </a>
+                  {adCountdown > 5 ? (
+                    <div className="border border-zinc-800 bg-[#121214] text-zinc-500 px-4 py-2 text-[10px] uppercase font-black tracking-widest cursor-not-allowed">
+                      SKIP AD IN {adCountdown - 5}s
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowAd(false)}
+                      className="border border-[#e5ff00] text-[#e5ff00] hover:bg-[#e5ff00]/10 px-4 py-2 text-[10px] uppercase font-black tracking-widest transition-all"
+                    >
+                      SKIP AD NOW
+                    </button>
+                  )}
+                </div>
+                
+                <p className="text-[8px] text-zinc-600 uppercase">
+                  Subscribing to @{username || "broadcaster"} also unlocks ad-free streaming!
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Control Bar */}

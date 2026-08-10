@@ -250,6 +250,104 @@ export default function Payouts() {
           {/* MAIN PANELS */}
           <div className="lg:col-span-2 space-y-8">
             
+            {/* SPARKZ PRO MEMBERSHIP PANEL */}
+            <div className={`border p-6 relative overflow-hidden transition-all rounded-sm ${
+              balances.is_pro 
+                ? "border-[#e5ff00]/40 bg-[#e5ff00]/5 shadow-[0_0_20px_rgba(229,255,0,0.05)]" 
+                : "border-zinc-800 bg-[#050505]"
+            }`}>
+              {balances.is_pro && (
+                <div className="absolute top-0 right-0 bg-[#e5ff00] text-black font-black text-[9px] uppercase tracking-widest px-3 py-1 font-mono">
+                  ACTIVE MEMBER
+                </div>
+              )}
+              
+              <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">// PREMIUM SUBSCRIPTION</div>
+              <h2 className="text-sm font-display font-black text-white uppercase tracking-widest flex items-center gap-2 mb-4">
+                <Sparkles className="h-5 w-5 text-[#e5ff00]" />
+                <span>SPARKZ PRO MEMBERSHIP</span>
+              </h2>
+
+              <p className="text-xs text-zinc-400 mb-6 uppercase max-w-2xl leading-relaxed">
+                Unlock elite status across the platform, bypass commercial breaks, customize your digital profile, and get special server privileges.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="border border-zinc-900 bg-black/40 p-4 space-y-1">
+                  <span className="text-[#e5ff00] font-bold text-xs uppercase flex items-center gap-1">👑 GOLD CHAT BADGE</span>
+                  <p className="text-[10px] text-zinc-500 uppercase leading-relaxed">
+                    Stand out in any stream with a custom glowing gold badge.
+                  </p>
+                </div>
+                <div className="border border-zinc-900 bg-black/40 p-4 space-y-1">
+                  <span className="text-[#e5ff00] font-bold text-xs uppercase flex items-center gap-1">🚫 100% AD-FREE</span>
+                  <p className="text-[10px] text-zinc-500 uppercase leading-relaxed">
+                    Bypass all sponsor banners and enjoy un-interrupted stream audio.
+                  </p>
+                </div>
+                <div className="border border-zinc-900 bg-black/40 p-4 space-y-1">
+                  <span className="text-[#e5ff00] font-bold text-xs uppercase flex items-center gap-1">🎵 MIX HOSTING</span>
+                  <p className="text-[10px] text-zinc-500 uppercase leading-relaxed">
+                    Pin up to 5 DJ mix sets inside the Lounge permanently.
+                  </p>
+                </div>
+                <div className="border border-zinc-900 bg-black/40 p-4 space-y-1">
+                  <span className="text-[#e5ff00] font-bold text-xs uppercase flex items-center gap-1">⚡ STROBE FLARES</span>
+                  <p className="text-[10px] text-zinc-500 uppercase leading-relaxed">
+                    Send specialized flashing strobe animations inside live chats.
+                  </p>
+                </div>
+              </div>
+
+              {balances.is_pro ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-[#e5ff00]/20 pt-4 mt-2">
+                  <div className="font-mono text-[10px] text-zinc-400 uppercase">
+                    Your account is upgraded to <span className="text-[#e5ff00] font-bold">SPARKZ PRO VIP</span>. Renewal rate is 1,000 Bits per month.
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm("Are you sure you want to cancel your SPARKZ PRO membership? You will instantly lose your premium badges.")) return;
+                      try {
+                        const { data } = await api.post("/users/me/pro/cancel");
+                        setBalances(prev => ({ ...prev, is_pro: false }));
+                        toast.success("Membership successfully cancelled.");
+                      } catch (err) {
+                        toast.error(err.response?.data?.error || "Failed to cancel membership.");
+                      }
+                    }}
+                    className="border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all"
+                  >
+                    CANCEL MEMBERSHIP
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-zinc-900 pt-4 mt-2">
+                  <div className="font-mono text-[10px] text-zinc-500 uppercase">
+                    Costs <span className="text-[#e5ff00] font-bold">1,000 Vinyl Bits</span> ($10.00 equivalent value) / month. Cancel anytime with a single click.
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { data } = await api.post("/users/me/pro/upgrade");
+                        setBalances(prev => ({ 
+                          ...prev, 
+                          is_pro: true,
+                          vinyl_bits: data.vinyl_bits ?? (prev.vinyl_bits - 1000)
+                        }));
+                        toast.success("Congratulations! You are now a SPARKZ PRO member! 👑✨");
+                      } catch (err) {
+                        toast.error(err.response?.data?.error || "Failed to upgrade. Please purchase Vinyl Bits to complete upgrade.");
+                      }
+                    }}
+                    className="bg-[#e5ff00] text-black hover:bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
+                  >
+                    <span>UPGRADE TO PRO NOW</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* 4. PAYOUT LEDGER TABLE */}
             <div className="border border-zinc-800 bg-[#050505] p-6">
               <div className="flex items-center justify-between border-b border-zinc-900 pb-4 mb-4">

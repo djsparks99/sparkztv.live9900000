@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download } from "lucide-react";
+import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download, Smartphone, Monitor } from "lucide-react";
 import { fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import { usePWA } from "@/hooks/usePWA";
+import { toast } from "sonner";
 // Transparent yellow speech bubble logo sticker icon with cute cartoon eyes
 function SpeechBubbleLogo({ className = "h-10 w-10" }) {
   return (
@@ -137,29 +138,41 @@ export default function Navbar() {
         </form>
 
         <div className="flex items-center gap-3">
-          <Link
-            to="/payouts?buy=true"
-            data-testid="nav-buy-bits-btn"
-            className="hidden sm:flex items-center gap-1.5 border border-[#e5ff00]/60 bg-[#e5ff00]/10 px-2.5 py-1.5 font-mono text-[11px] uppercase font-bold tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-[#e5ff00]/25 transition-all"
-            title="Buy Vinyl Bits to Support Streamers"
+          <button
+            type="button"
+            onClick={async () => {
+              if (isInstallable) {
+                const success = await installApp();
+                if (success) {
+                  toast.success("Thank you for installing SPARKZ.TV! ⚡");
+                }
+              } else {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                  toast.info(
+                    "TO GET THE APP: TAP YOUR BROWSER'S SHARE BUTTON AND SELECT 'ADD TO HOME SCREEN' 📱",
+                    { duration: 8000 }
+                  );
+                } else {
+                  toast.info(
+                    "TO GET THE APP: CLICK THE INSTALL/PWA ICON IN YOUR BROWSER'S ADDRESS BAR 💻",
+                    { duration: 8000 }
+                  );
+                }
+              }
+            }}
+            data-testid="pwa-install-btn"
+            className="group flex items-center gap-1.5 border border-[#e5ff00] bg-black px-2 sm:px-2.5 py-1.5 font-mono text-[10px] sm:text-[11px] uppercase font-bold tracking-wider text-[#e5ff00] hover:bg-[#e5ff00] hover:text-black transition-all shadow-[0_0_8px_rgba(229,255,0,0.3)] shrink-0"
+            title="Install SPARKZ.TV to your Device"
+            aria-label="Install App"
           >
-            <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
-            <span>BUY BITS</span>
-          </Link>
-
-          {isInstallable && (
-            <button
-              type="button"
-              onClick={installApp}
-              data-testid="pwa-install-btn"
-              className="flex items-center gap-1.5 border border-[#e5ff00] bg-[#e5ff00]/10 px-2.5 py-1.5 font-mono text-[11px] uppercase font-bold tracking-wider text-[#e5ff00] hover:bg-[#e5ff00] hover:text-black transition-all shadow-[0_0_8px_rgba(229,255,0,0.3)]"
-              title="Install SPARKZ.TV to your Device"
-              aria-label="Install App"
-            >
-              <Download className="h-3.5 w-3.5 text-[#e5ff00]" />
-              <span>INSTALL APP</span>
-            </button>
-          )}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Smartphone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#e5ff00] group-hover:text-black transition-all shrink-0" />
+              <Monitor className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#e5ff00] group-hover:text-black transition-all shrink-0" />
+            </div>
+            <span className="inline-block sm:hidden">GET APP</span>
+            <span className="hidden sm:inline">GET THE APP</span>
+          </button>
 
           <button
             type="button"
@@ -233,6 +246,17 @@ export default function Navbar() {
                       THE LOUNGE
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-0 bg-[#27272a]" />
+                  <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
+                    <Link
+                      to="/payouts?buy=true"
+                      data-testid="nav-buy-bits-btn"
+                      className="flex cursor-pointer items-center gap-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-[#e5ff00] hover:bg-[#0f0f0f] focus:bg-[#0f0f0f] font-bold"
+                    >
+                      <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
+                      BUY BITS
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -287,6 +311,16 @@ function UserMenu({ user, onLogout }) {
             @{user.username}
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuItem asChild data-testid="user-menu-buy-bits" style={{ borderRadius: 0 }}>
+          <Link
+            to="/payouts?buy=true"
+            className="flex cursor-pointer items-center gap-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-[#e5ff00] hover:bg-[#0f0f0f] focus:bg-[#0f0f0f] font-bold"
+          >
+            <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
+            BUY BITS
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="my-0 bg-[#27272a]" />
         <MenuLink
           to={`/channel/${user.username}`}
           icon={<Tv className="h-3.5 w-3.5" />}

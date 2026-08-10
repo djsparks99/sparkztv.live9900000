@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage, DEFAULT_AVATAR } from "@/lib/api";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight, Headphones, Search, Volume2 } from "lucide-react";
+import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight, Headphones, Search, Volume2, Reply } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingReactions from "./FloatingReactions";
 import { toast } from "sonner";
@@ -26,7 +27,8 @@ export default function ChatPanel({ username, onCollapse }) {
   const [messages, setMessages] = useState([]);
   const [activeTab, setActiveTab] = useState("chat"); // "chat" or "listeners"
   const [listenerSearch, setListenerSearch] = useState("");
-  const [text, setText] = useState("");
+  const [text, setText] = useLocalStorage(`sparkz_chat_draft_${username}`, "");
+  const [replyTo, setReplyTo] = useState(null);
   const [connected, setConnected] = useState(false);
   const [systemLine, setSystemLine] = useState(null);
   
@@ -418,6 +420,9 @@ export default function ChatPanel({ username, onCollapse }) {
         sender_display_name: user?.display_name || null,
         sender_username: user?.username || null,
         sender_photo_url: user?.photo_url || user?.photoUrl || null,
+        parent_message_id: replyTo?.id || null,
+        parent_message_text: replyTo?.text || null,
+        parent_message_sender: replyTo?.sender_display_name || replyTo?.sender_username || null,
       })
     );
 
@@ -427,6 +432,7 @@ export default function ChatPanel({ username, onCollapse }) {
     }
 
     setText("");
+    setReplyTo(null);
     setShowEmotePicker(false);
   };
 
@@ -589,15 +595,66 @@ export default function ChatPanel({ username, onCollapse }) {
             </div>
           )}
 
-          {Array.isArray(messages) &&
-            messages.map((m) => (
-              <ChatMessage
-                key={m.id || Math.random()}
-                m={m}
-                emotes={emotes}
-                onInspectUser={handleInspectChatter}
-              />
-            ))}
+          {(() => {
+            const rootMessages = [];
+            const replyMap = new Map();
+
+            if (Array.isArray(messages)) {
+              messages.forEach((m) => {
+                if (m.parent_message_id) {
+                  if (!replyMap.has(m.parent_message_id)) {
+                    replyMap.set(m.parent_message_id, []);
+                  }
+                  replyMap.get(m.parent_message_id).push(m);
+                }
+              });
+
+              messages.forEach((m) => {
+                if (!m.parent_message_id) {
+                  rootMessages.push(m);
+                } else {
+                  const parentExists = messages.some((parent) => parent.id === m.parent_message_id);
+                  if (!parentExists) {
+                    rootMessages.push(m);
+                  }
+                }
+              });
+            }
+
+            return rootMessages.map((m) => {
+              const replies = replyMap.get(m.id) || [];
+              return (
+                <div key={m.id || Math.random()} className="space-y-2 mb-3">
+                  <ChatMessage
+                    m={m}
+                    emotes={emotes}
+                    onInspectUser={handleInspectChatter}
+                    onReply={(msg) => {
+                      setReplyTo(msg);
+                      if (inputRef.current) inputRef.current.focus();
+                    }}
+                  />
+                  {replies.length > 0 && (
+                    <div className="pl-4 ml-5 border-l border-zinc-850 space-y-2 mt-1.5">
+                      {replies.map((reply) => (
+                        <ChatMessage
+                          key={reply.id || Math.random()}
+                          m={reply}
+                          emotes={emotes}
+                          onInspectUser={handleInspectChatter}
+                          onReply={(msg) => {
+                            setReplyTo(msg);
+                            if (inputRef.current) inputRef.current.focus();
+                          }}
+                          isReply={true}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
 
           {systemLine && (
             <div className="border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-[#e5ff00]">
@@ -970,6 +1027,25 @@ export default function ChatPanel({ username, onCollapse }) {
             )}
           </div>
 
+          {replyTo && (
+            <div className="flex items-center justify-between border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-2 py-1.5 rounded-sm text-[10px] font-mono animate-fade-in">
+              <div className="flex items-center gap-1.5 text-zinc-300 min-w-0">
+                <Reply className="h-3 w-3 text-[#e5ff00] shrink-0" />
+                <span className="shrink-0 uppercase font-bold text-[#e5ff00]">REPLYING TO</span>
+                <span className="shrink-0 text-white font-mono font-bold">@{replyTo.sender_display_name || replyTo.sender_username}</span>
+                <span className="text-zinc-500 truncate italic">"{replyTo.text}"</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                className="text-zinc-500 hover:text-[#e5ff00] p-1 transition-colors ml-2 shrink-0"
+                title="Cancel Reply"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           <form onSubmit={send} className="flex gap-2" data-testid="chat-form">
             <div className="relative flex-1">
               <input
@@ -1033,7 +1109,7 @@ export default function ChatPanel({ username, onCollapse }) {
   );
 }
 
-function ChatMessage({ m, emotes, onInspectUser }) {
+function ChatMessage({ m, emotes, onInspectUser, onReply, isReply = false }) {
   const isHighVoltage = m.is_highlighted;
   const isSystemCommand = m.is_system_command || m.sender_uid === "system-bot" || m.sender_username === "sparkz_bot";
 
@@ -1108,12 +1184,26 @@ function ChatMessage({ m, emotes, onInspectUser }) {
 
   return (
     <div
-      className={`flex items-start gap-2.5 p-1.5 transition-all rounded-sm ${
+      className={`group relative flex items-start gap-2.5 p-1.5 transition-all rounded-sm ${
         isHighVoltage
           ? "border border-[#e5ff00] bg-gradient-to-r from-[#e5ff00]/15 via-[#e5ff00]/5 to-transparent shadow-[0_0_15px_rgba(229,255,0,0.2)]"
           : "hover:bg-white/5"
-      }`}
+      } ${isReply ? "bg-[#0c0c0e]/40 border-l border-[#e5ff00]/30 pl-2" : ""}`}
     >
+      {/* Reply Icon on Hover */}
+      {onReply && !isSystemCommand && (
+        <div className="absolute right-2 top-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center bg-[#121214] border border-[#27272a] p-1 rounded-sm shadow-md z-10">
+          <button
+            type="button"
+            onClick={() => onReply(m)}
+            className="p-1 text-zinc-400 hover:text-[#e5ff00] hover:bg-white/5 rounded-xs transition-colors cursor-pointer"
+            title="Reply directly"
+          >
+            <Reply className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <img
         src={m.sender_photo_url ? fileUrl(m.sender_photo_url) : DEFAULT_AVATAR}
         alt=""
@@ -1123,6 +1213,14 @@ function ChatMessage({ m, emotes, onInspectUser }) {
       />
 
       <div className="min-w-0 flex-1">
+        {m.parent_message_id && !isReply && (
+          <div className="flex items-center gap-1 text-[9px] text-zinc-400 bg-zinc-900/60 px-1.5 py-0.5 rounded-sm mb-1.5 font-mono max-w-max border border-zinc-800">
+            <Reply className="h-2.5 w-2.5 text-zinc-500 shrink-0" />
+            <span className="text-[#e5ff00]">@{m.parent_message_sender}</span>:
+            <span className="truncate max-w-[150px] italic">"{m.parent_message_text}"</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-1.5">
           <BadgeFlares badges={m.sender_badges} />
 
@@ -1188,6 +1286,16 @@ function BadgeFlares({ badges }) {
       {badges.includes("supporter") && (
         <span className="inline-flex items-center gap-0.5 border border-cyan-400 bg-cyan-500/15 px-1 py-0.2 font-mono text-[8px] uppercase font-bold text-cyan-400 rounded-xs">
           <Zap className="h-2.5 w-2.5 fill-cyan-400" /> SUPPORTER
+        </span>
+      )}
+      {badges.includes("pro") && (
+        <span className="inline-flex items-center gap-0.5 border border-[#e5ff00] bg-black text-[#e5ff00] px-1 py-0.2 font-mono text-[8px] uppercase font-bold rounded-xs shadow-[0_0_8px_rgba(229,255,0,0.4)]">
+          <Sparkles className="h-2.5 w-2.5 animate-pulse" /> PRO
+        </span>
+      )}
+      {badges.includes("subscriber") && (
+        <span className="inline-flex items-center gap-0.5 border border-purple-400 bg-purple-500/15 px-1 py-0.2 font-mono text-[8px] uppercase font-bold text-purple-400 rounded-xs">
+          <Crown className="h-2.5 w-2.5" /> SUB
         </span>
       )}
     </div>
