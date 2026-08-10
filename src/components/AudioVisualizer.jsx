@@ -4,13 +4,13 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 220, height: 32 });
 
-  // Number of frequency bands
-  const numBars = 28;
+  // Number of frequency bands (32-band high-density digital readout)
+  const numBars = 32;
   const barHeightsRef = useRef(Array(numBars).fill(2));
   const peakHeightsRef = useRef(Array(numBars).fill(2));
   const peakDecayRef = useRef(Array(numBars).fill(0));
 
-  // Sensitivity State (Defaults to 1.0, ranges from 0.2 to 3.0)
+  // Sensitivity State (Defaults to 1.0, ranges to 3.0)
   const [sensitivity, setSensitivity] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sparkz_visualizer_sensitivity");
@@ -56,6 +56,9 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
       const deltaTime = (now - lastTime) / 1000;
       lastTime = now;
 
+      // Limit deltaTime to avoid huge jumps on tab wake
+      const dt = Math.min(deltaTime, 0.1);
+
       const numBars = barHeightsRef.current.length;
       const t = now * 0.001; // Time in seconds
 
@@ -81,8 +84,8 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
           if (hasSignal && dataArray) {
             // Logarithmic/exponential spacing for bars over the frequency spectrum
             const totalBins = dataArray.length;
-            const startRatio = Math.pow(i / numBars, 1.6);
-            const endRatio = Math.pow((i + 1) / numBars, 1.6);
+            const startRatio = Math.pow(i / numBars, 1.5);
+            const endRatio = Math.pow((i + 1) / numBars, 1.5);
             
             let startBin = Math.floor(startRatio * totalBins);
             let endBin = Math.floor(endRatio * totalBins);
@@ -99,7 +102,8 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
             // Soft-compression power curve with user gain modulation
             const currentSens = sensitivityRef.current;
             const normalized = Math.min(1.0, (avg / 255) * currentSens);
-            const peakTarget = Math.pow(normalized, 0.85) * (dimensions.height - 4) * 0.90;
+            // Height formula leaving a tiny bit of room at the top (dimensions.height - 3)
+            const peakTarget = Math.pow(normalized, 0.82) * (dimensions.height - 3) * 0.95;
             target = Math.max(2, peakTarget);
           } else {
             // Dynamic music pattern when live (fallback/muted)
@@ -130,25 +134,35 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
         }
 
         // Limit target height to fit the actual available height (minus some padding)
-        const maxHeight = dimensions.height - 4;
+        const maxHeight = dimensions.height - 2;
         target = Math.min(maxHeight, target);
 
-        // Smoothly interpolate current bar heights towards targets
-        const speed = isLive ? (hasSignal ? 24 : 18) : 8; // Snappier response with real frequency input
+        // Professional audio-meter physics:
+        // - Instantaneous Attack (jump to target if target is higher)
+        // - Natural Fluid Decay (glide down at a natural gravity rate)
         const currentHeight = barHeightsRef.current[i];
-        const newHeight = currentHeight + (target - currentHeight) * Math.min(1, speed * deltaTime);
+        let speed = 8; // Offline speed
+        if (isLive) {
+          if (target > currentHeight) {
+            speed = 60; // Instant response to sound transients/beat peaks
+          } else {
+            speed = 20; // Smooth falling decay
+          }
+        }
+        
+        const newHeight = currentHeight + (target - currentHeight) * Math.min(1, speed * dt);
         barHeightsRef.current[i] = newHeight;
 
-        // Update Peak hold dots
+        // Update Peak hold indicators
         const peak = peakHeightsRef.current[i];
         if (newHeight >= peak) {
           peakHeightsRef.current[i] = newHeight;
           peakDecayRef.current[i] = 0; // Reset decay velocity
         } else {
-          // Peak holds for a moment, then accelerates downwards
-          const gravity = 15; // px/sec^2
-          peakDecayRef.current[i] += gravity * deltaTime;
-          const newPeak = peak - peakDecayRef.current[i] * deltaTime;
+          // Peak holds for a brief moment, then drops quickly
+          const gravity = 18; // px/sec^2
+          peakDecayRef.current[i] += gravity * dt;
+          const newPeak = peak - peakDecayRef.current[i] * dt;
           peakHeightsRef.current[i] = Math.max(newHeight, Math.max(2, newPeak));
         }
       }
@@ -164,13 +178,13 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
   }, [isLive, dimensions.height, analyser]);
 
   // Compute SVG elements
-  const padding = 1.5;
+  const padding = 1.2;
   const barWidth = Math.max(1.5, (dimensions.width - (numBars - 1) * padding) / numBars);
 
   return (
     <div 
       className="hidden md:flex flex-col justify-center flex-1 mx-8 max-w-[240px] select-none py-1"
-      title={isLive ? "Audio Feed active. Double click slider to reset GAIN." : "Receiver Standby"}
+      title={isLive ? "Active Stream Visualizer. Double click slider to reset GAIN." : "Receiver Standby"}
     >
       {/* Sized container observed for canvas/responsive width */}
       <div ref={containerRef} className="w-full h-8 flex items-center justify-center">
@@ -179,16 +193,23 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
           height={dimensions.height} 
           className="overflow-visible"
         >
-          {/* Horizontal grid lines */}
-          <line 
-            x1={0} 
-            y1={dimensions.height / 2} 
-            x2={dimensions.width} 
-            y2={dimensions.height / 2} 
-            stroke="#27272a" 
-            strokeWidth={0.5} 
-            strokeDasharray="2 3" 
-          />
+          <defs>
+            {/* High-contrast hardware linear gradient for live audio */}
+            <linearGradient id="sparkz-cyber-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#00f6ff" /> {/* Vibrant Neon Cyan bottom */}
+              <stop offset="45%" stopColor="#00f6ff" />
+              <stop offset="75%" stopColor="#e5ff00" /> {/* Branded Yellow middle */}
+              <stop offset="100%" stopColor="#ff2a5f" /> {/* Warning Pink-Red peak */}
+            </linearGradient>
+
+            {/* Gray gradient for standby state */}
+            <linearGradient id="sparkz-standby-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#52525b" />
+              <stop offset="100%" stopColor="#a1a1aa" />
+            </linearGradient>
+          </defs>
+
+          {/* Horizontal high-frequency grid line */}
           <line 
             x1={0} 
             y1={dimensions.height - 1} 
@@ -198,36 +219,57 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
             strokeWidth={0.5} 
           />
 
-          {/* Draw Equalizer Bars and Peak hold indicators */}
+          {/* Draw Segmented Equalizer Bars and Peak holds */}
           {barHeightsRef.current.map((height, i) => {
             const x = i * (barWidth + padding);
-            const y = dimensions.height - height;
-            const peakY = dimensions.height - peakHeightsRef.current[i];
+            const midX = x + barWidth / 2;
+            
+            // Peak level top coordinates
+            const barTopY = dimensions.height - height;
+            const peakTopY = dimensions.height - peakHeightsRef.current[i];
 
-            // Color gradient from yellow to cyan or simple branded theme color #e5ff00
-            const barColor = isLive ? "#e5ff00" : "#a1a1aa";
-            const peakColor = isLive ? "#ffffff" : "#71717a";
+            // Setup active theme color schemes
+            const strokeColor = isLive ? "url(#sparkz-cyber-grad)" : "url(#sparkz-standby-grad)";
+            const peakColor = isLive ? "#ffffff" : "#a1a1aa";
+
+            // Define the LED block patterns
+            // segment size: 2.2px block, 1px space
+            const dashPattern = "2.2 1";
 
             return (
               <g key={i}>
-                {/* Spectrum Bar */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={Math.max(1, height)}
-                  fill={barColor}
-                  opacity={isLive ? 0.85 : 0.4}
-                  rx={0.5}
+                {/* 1. Background Grid Track: Empty "LED sockets" when silent */}
+                <line
+                  x1={midX}
+                  y1={dimensions.height}
+                  x2={midX}
+                  y2={1}
+                  stroke="#18181b"
+                  strokeWidth={barWidth}
+                  strokeDasharray={dashPattern}
+                  opacity={0.7}
                 />
-                {/* Peak Dot */}
+
+                {/* 2. Audio Spectrum Bar: Stacked glowing active LEDs */}
+                <line
+                  x1={midX}
+                  y1={dimensions.height}
+                  x2={midX}
+                  y2={Math.min(dimensions.height - 1, barTopY)}
+                  stroke={strokeColor}
+                  strokeWidth={barWidth}
+                  strokeDasharray={dashPattern}
+                  opacity={isLive ? 0.95 : 0.45}
+                />
+
+                {/* 3. Floating Peak indicator cell */}
                 <rect
                   x={x}
-                  y={Math.max(0, peakY - 1)}
+                  y={Math.max(0, peakTopY - 1)}
                   width={barWidth}
                   height={1}
                   fill={peakColor}
-                  opacity={isLive ? 0.9 : 0.6}
+                  opacity={isLive ? 0.9 : 0.45}
                 />
               </g>
             );
@@ -280,3 +322,4 @@ export default function AudioVisualizer({ isLive = false, analyser = null }) {
     </div>
   );
 }
+
