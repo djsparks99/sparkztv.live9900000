@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
-import { Play, Pause, Volume2, VolumeX, Maximize, Radio, Settings, Square, Sparkles } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Radio, Settings, Square, Sparkles, X } from "lucide-react";
 import FloatingReactions from "./FloatingReactions";
 
 export default function HlsPlayer({
@@ -54,6 +54,38 @@ export default function HlsPlayer({
     }, 1000);
     return () => clearTimeout(timer);
   }, [showAd, adCountdown]);
+
+  // Automated Sponsor Banner States
+  const [showFloatingBanner, setShowFloatingBanner] = useState(false);
+
+  // Trigger automated floating banner every 30 minutes, keeping it visible for 11 seconds.
+  // We also run a 15-second initial delay trigger so developers and users see it instantly!
+  useEffect(() => {
+    // Initial 15-second timer
+    const initialTimer = setTimeout(() => {
+      setShowFloatingBanner(true);
+    }, 15000);
+
+    // 30 minutes interval (30 * 60 * 1000 ms)
+    const intervalTime = 30 * 60 * 1000;
+    const interval = setInterval(() => {
+      setShowFloatingBanner(true);
+    }, intervalTime);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (showFloatingBanner) {
+      const dismissTimer = setTimeout(() => {
+        setShowFloatingBanner(false);
+      }, 11000);
+      return () => clearTimeout(dismissTimer);
+    }
+  }, [showFloatingBanner]);
 
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
@@ -372,6 +404,62 @@ export default function HlsPlayer({
                 <p className="text-[8px] text-zinc-600 uppercase">
                   Subscribing to @{username || "broadcaster"} also unlocks ad-free streaming!
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Platform-wide Automated Monetization Floating Corner Sponsor Banner */}
+          {showFloatingBanner && (
+            <div 
+              className="absolute bottom-16 right-4 z-40 bg-[#0c0c0e] border border-zinc-800 shadow-[0_8px_30px_rgba(0,0,0,0.85)] max-w-[320px] rounded-none animate-in fade-in slide-in-from-bottom-4 duration-300"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            >
+              <style>{`
+                @keyframes progress-shrink {
+                  from { width: 100%; }
+                  to { width: 0%; }
+                }
+              `}</style>
+              
+              {/* Header Bar */}
+              <div className="flex items-center justify-between bg-zinc-900 px-3 py-1.5 border-b border-zinc-800 text-white select-none">
+                <span className="text-[9px] uppercase tracking-widest font-bold text-[#e5ff00] flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#e5ff00] animate-ping" />
+                  SPONSOR TRANSMISSION
+                </span>
+                <button 
+                  onClick={() => setShowFloatingBanner(false)}
+                  className="text-zinc-500 hover:text-white transition-colors p-1"
+                  title="Close Advertisement"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Sponsor Iframe Content */}
+              <div className="p-1.5 bg-black flex justify-center items-center">
+                <iframe 
+                  src="https://cdn.bannersnack.com/banners/b7t86phuo/embed/index.html?userId=43549377&t=1786406044" 
+                  width="300" 
+                  height="250" 
+                  scrolling="no" 
+                  frameBorder="0" 
+                  allowTransparency="true" 
+                  allow="autoplay" 
+                  allowFullScreen={true}
+                  className="max-w-full block"
+                  title="Sponsor Banner"
+                />
+              </div>
+
+              {/* Countdown Progress Bar */}
+              <div className="h-1 bg-zinc-900 w-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#e5ff00]" 
+                  style={{ 
+                    animation: 'progress-shrink 11s linear forwards'
+                  }} 
+                />
               </div>
             </div>
           )}
