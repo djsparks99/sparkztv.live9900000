@@ -1087,11 +1087,16 @@ app.options("*", cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Automatically strip tracking query parameters (like fbclid) from incoming requests, except for static assets
+// Automatically strip tracking query parameters (like fbclid) from incoming requests, except for static assets and web crawlers/scrapers
 app.use((req: Request, res: Response, next: NextFunction) => {
   const isStaticAsset = /\.(png|jpg|jpeg|gif|webp|ico|svg|css|js|xml|txt)$/i.test(req.path);
-  if (!isStaticAsset && (req.query.fbclid || req.query.utm_source || req.query.utm_medium)) {
-    return res.redirect(301, req.path);
+  const userAgent = req.headers["user-agent"] || "";
+  const isCrawler = /facebookexternalhit|facebot|facebook|twitterbot|linkedinbot|pinterest|slackbot|googlebot|bingbot/i.test(userAgent);
+  
+  if (!isCrawler && !isStaticAsset && (req.query.fbclid || req.query.utm_source || req.query.utm_medium)) {
+    const host = req.get("host") || "sparkztv.live";
+    const protocol = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+    return res.redirect(301, `${protocol}://${host}${req.path}`);
   }
   next();
 });
