@@ -338,6 +338,10 @@
 
         // Function to Trigger Floating Sponsor Banner
         function triggerSponsorBanner() {
+            if (window.innerWidth < 640) {
+                logMsg(`[MONETIZATION] Sponsor banner bypassed on mobile view (width: ${window.innerWidth}px).`);
+                return;
+            }
             logMsg(`<span class="text-[#e5ff00] font-bold">[MONETIZATION] Automated sponsor loop triggered. Showing banner overlay...</span>`);
             
             // Clear any active dismiss timers

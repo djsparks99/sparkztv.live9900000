@@ -358,7 +358,7 @@ export default function HlsPlayer({
 
           {/* Retro-Styled Sponsor/Ad Overlay */}
           {showAd && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 border-2 border-[#e5ff00]/60 p-6 animate-fade-in backdrop-blur-sm select-text">
+            <div className="hidden sm:flex absolute inset-0 z-30 flex-col items-center justify-center bg-black/95 border-2 border-[#e5ff00]/60 p-6 animate-fade-in backdrop-blur-sm select-text">
               <div className="absolute top-2 left-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#e5ff00] animate-pulse" />
                 SPONSOR ADVERTISEMENT · {adCountdown}s REMAINING
@@ -411,7 +411,7 @@ export default function HlsPlayer({
           {/* Platform-wide Automated Monetization Floating Corner Sponsor Banner */}
           {showFloatingBanner && (
             <div 
-              className="absolute bottom-16 right-4 z-40 bg-[#0c0c0e] border border-zinc-800 shadow-[0_8px_30px_rgba(0,0,0,0.85)] max-w-[320px] rounded-none animate-in fade-in slide-in-from-bottom-4 duration-300"
+              className="hidden sm:block absolute bottom-16 right-4 z-40 bg-[#0c0c0e] border border-zinc-800 shadow-[0_8px_30px_rgba(0,0,0,0.85)] max-w-[320px] rounded-none animate-in fade-in slide-in-from-bottom-4 duration-300"
               style={{ fontFamily: "'JetBrains Mono', monospace" }}
             >
               <style>{`
