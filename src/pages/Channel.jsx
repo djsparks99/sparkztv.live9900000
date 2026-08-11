@@ -379,17 +379,39 @@ export default function Channel() {
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 {/* Left Column: Avatar + Profile details */}
                 <div className="flex items-center gap-3 min-w-0 lg:flex-1">
-                  {/* Spherically-bounded avatar container */}
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-[#e5ff00]/20 flex-shrink-0 overflow-hidden relative bg-[#141416] flex items-center justify-center">
-                    <img 
-                      src={resolvedAvatar || DEFAULT_AVATAR} 
-                      alt={channel.username} 
-                      className="h-full w-full object-cover rounded-full"
-                      referrerPolicy="no-referrer"
-                    />
-                    {/* Live/Offline status indicator on avatar */}
-                    {isLive && (
-                      <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-[#e5ff00] border border-[#0e0e10]" />
+                  {/* Spherically-bounded avatar container with Red Night Rider border animation when live */}
+                  <div className="relative h-11 w-11 md:h-13 md:w-13 flex-shrink-0 flex items-center justify-center">
+                    {/* Spinning border container */}
+                    <div className="absolute inset-0 rounded-full overflow-hidden bg-zinc-900">
+                      {isLive && (
+                        <div 
+                          className="absolute inset-[-50%] animate-[spin_2s_linear_infinite]"
+                          style={{
+                            background: "conic-gradient(from 0deg, transparent 50%, #ff0000 80%, #ff5c5c 95%, #ff0000 100%)"
+                          }}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Inner image container */}
+                    <div className="absolute inset-[2px] rounded-full overflow-hidden bg-[#141416] flex items-center justify-center z-10">
+                      <img 
+                        src={resolvedAvatar || DEFAULT_AVATAR} 
+                        alt={channel.username} 
+                        className="h-full w-full object-cover rounded-full"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+
+                    {/* Live/Offline status indicator on avatar bottom-center */}
+                    {isLive ? (
+                      <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-red-600 text-[8px] font-black tracking-widest text-white px-1 py-0.5 border border-red-500 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                        LIVE
+                      </span>
+                    ) : (
+                      <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-zinc-800 text-[8px] font-black tracking-widest text-zinc-400 px-1 py-0.5 border border-zinc-700 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                        OFF
+                      </span>
                     )}
                   </div>
 
@@ -403,7 +425,7 @@ export default function Channel() {
                         </span>
                       </h1>
                       
-                      {isLive ? (
+                      {isLive && (
                         <div className="flex items-center gap-2">
                           <span className="live-badge !py-0 !px-1 text-[8px] font-bold uppercase tracking-wider bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20 flex items-center h-4">
                             <span className="dot live-dot bg-[#e5ff00]" /> LIVE
@@ -425,10 +447,6 @@ export default function Channel() {
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <span className="chip !py-0 !px-1 text-[8px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border-zinc-700 flex items-center h-4">
-                          OFFLINE
-                        </span>
                       )}
                     </div>
 
