@@ -24,30 +24,7 @@ import {
 } from "lucide-react";
 
 // Curated resident & featured underground DJs with rich social links & metadata
-const DEFAULT_FEATURED_DJS = [
-  {
-    username: "djsparkz",
-    display_name: "DJ SPARKZ",
-    tagline: "Resident Master & Headliner",
-    genre: "Drum & Bass / Jungle",
-    categories: ["drum and bass", "dnb", "jungle", "old skool"],
-    location: "London, UK",
-    bio: "Broadcast pioneer delivering heavyweight dubplates, breakbeat jungle, and deep rolling basslines live on SPARKZ.TV.",
-    photo_url: "https://api.dicebear.com/7.x/bottts/svg?seed=djsparkz&backgroundColor=e5ff00",
-    cover_gradient: "from-yellow-500/20 via-amber-600/10 to-transparent",
-    watts: 2500,
-    accent_color: "#e5ff00",
-    badge: "FOUNDER / RESIDENT",
-    socials: {
-      soundcloud: "https://soundcloud.com/djsparkz-live",
-      mixcloud: "https://mixcloud.com/djsparkz",
-      instagram: "https://instagram.com/djsparkz_official",
-      youtube: "https://youtube.com/@djsparkzlive",
-      twitter: "https://x.com/djsparkzlive",
-      spotify: "https://open.spotify.com/artist/djsparkz",
-    },
-  },
-];
+const DEFAULT_FEATURED_DJS = [];
 
 const GENRE_FILTERS = [
   { id: "all", label: "ALL DJS" },
@@ -353,6 +330,10 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
       setTimeout(() => setCopiedDJ(null), 2000);
     }
   };
+
+  if (djList.length === 0) {
+    return null;
+  }
 
   return (
     <section

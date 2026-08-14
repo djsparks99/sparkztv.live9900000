@@ -258,32 +258,9 @@ export default function StreamCarousel({ allChannels = [], channels = [], isLoad
 
       {/* Header Container */}
       <div className="relative mx-auto max-w-[1440px] px-6 pt-8 pb-4 flex flex-col items-center">
-        {/* Centered Bannersnack Leaderboard Ad Container */}
-        <div className="hidden md:flex w-full flex-col items-center justify-center mb-6">
-          <div className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#e5ff00]/60 mb-2 text-center">// SPARKZ BROADCAST NETWORK // AD TRANSMISSION</div>
-          <div className="w-full max-w-[728px] overflow-x-auto scrollbar-none flex justify-center">
-            <div 
-              id="bannersnack-embed-container" 
-              className="w-[728px] h-[90px] shrink-0 bg-[#050507] border border-[#1c1c1f] shadow-[0_0_20px_rgba(0,0,0,0.8)] relative overflow-hidden"
-            >
-              <iframe
-                src="//cdn.bannersnack.com/banners/bdun0xvdy/embed/index.html?userId=35786041&t=1786237229"
-                width="100%"
-                height="100%"
-                scrolling="no"
-                frameBorder="0"
-                allow="autoplay"
-                allowFullScreen={true}
-                title="Sparkz Ad Banner"
-                className="w-full h-full"
-                style={{ border: "none", overflow: "hidden" }}
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Lower Header Controls & Status */}
-        <div className="w-full flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-[#1a1a1e] pt-4">
+        <div className="w-full flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Left: High-energy terminal subgenre badge ticker */}
           <div className="flex-1 max-w-xl">
             <div className="flex items-center gap-3 overflow-hidden border border-[#e5ff00]/15 bg-[#050507] px-3.5 py-1.5 font-mono text-[10px] tracking-wider text-[#e5ff00] rounded-none shadow-[inset_0_0_10px_rgba(229,255,0,0.02)]">

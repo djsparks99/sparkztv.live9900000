@@ -7,7 +7,6 @@ import Navbar from "@/components/Navbar";
 import LiveSidebar from "@/components/LiveSidebar";
 import UsernameLockModal from "@/components/UsernameLockModal";
 import Footer from "@/components/Footer";
-import AdUnit from "@/components/AdUnit";
 import Browse from "@/pages/Browse";
 import Directory from "@/pages/Directory";
 import Login from "@/pages/Login";
@@ -80,7 +79,6 @@ function SiteLayout() {
         <main className="relative z-10">
           <Outlet />
         </main>
-        <AdUnit />
         <Footer />
       </div>
 
