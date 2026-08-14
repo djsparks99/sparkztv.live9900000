@@ -86,6 +86,101 @@ We built SPARKZ.TV to escape this system entirely. By owning our live infrastruc
 
 This is a space built by selectors, for selectors. Welcome home.`,
   },
+  {
+    id: "pirate-radio-rigs",
+    title: "The History and Legacy of London Pirate Radio Rigs",
+    slug: "history-and-legacy-of-london-pirate-radio-rigs",
+    summary: "A deep dive into the engineering, culture, and high-altitude risk-taking of London's pirate radio stations from the 1980s to the 2000s.",
+    author: "El Selector",
+    author_title: "Radio Historian & DJ",
+    published_at: "2026-08-14T09:00:00Z",
+    tags: ["PIRATE-RADIO", "HISTORY", "LONDON", "TRANSMITTERS"],
+    content: `## The Concrete Aerials
+In the early 1990s, the skyline of London's estate tower blocks wasn't just a symbol of urban planning—it was a highly active, high-frequency network of pirate radio antennas. Stations like Kool FM, Rinse FM, Deja Vu, and Weekend Rush defined the sonic evolution of Hardcore, Jungle, Drum & Bass, UK Garage, and Grime. These stations operated without broadcasting licenses, transmitting from secret flats and rooftop setups to supply the capital with the newest sounds.
+
+## Rig Engineering and Rigging
+Pirate radio engineering was a masterclass in adaptation and tactical placement. Rigs were rarely kept in the same room as the studio. To avoid confiscation by the DTI (Department of Trade and Industry), crews decoupled the studio from the transmitter using a secondary link system:
+- **The Microwave Link (STL):** The studio would send its signal via a highly directional microwave transmitter to a receiver antenna on a distant rooftop.
+- **The Transmitter Rig:** The main FM transmitter sat in a hidden, reinforced locker or elevator motor room on the roof of a high-rise council block, converting the STL feed into the final high-power FM broadcast signal.
+- **Rig Shields:** Engineers built custom steel enclosures, wrapped them in heavy chains, and sometimes wired low-voltage alarms or smoke-bombs to deter authorities from taking the gear easily.
+
+## Sound Diffusion and Community Action
+These transmissions bypassing state restrictions gave birth to entire musical genres. MCs shouted out listeners calling in via mobile phones, establishing a tight-knit feedback loop that molded the music in real time. 
+
+Today, that same radical independent energy drives SPARKZ.TV. Although the medium has transitioned from analog FM antennas to high-speed digital stream packets, the mission remains identical: giving underground selectors a platform free from commercial policing.`,
+  },
+  {
+    id: "sound-system-acoustics",
+    title: "Acoustic Engineering 101: Building Bass-Heavy Sound Systems",
+    slug: "acoustic-engineering-101-building-bass-heavy-sound-systems",
+    summary: "An introduction to sub-bass physics, crossover configurations, phase alignment, and cabinet architectures for modern electronic selectors.",
+    author: "Sub-Doctor",
+    author_title: "Acoustic Systems Engineer",
+    published_at: "2026-08-14T10:15:00Z",
+    tags: ["ACOUSTICS", "SOUND-SYSTEMS", "BASS-PHYSICS", "TUTORIAL"],
+    content: `## The Physics of Deep Frequencies
+Underground electronic music is experienced, not just heard. To achieve that chest-rattling sub-bass experience, sound systems must manipulate low-frequency sound waves. A 30Hz sound wave is roughly 11.4 meters long, requiring massive physical cabinets and optimized electrical power to propagate cleanly without distortion or acoustic cancellation.
+
+## Cabinet Architecture: Horn-Loaded vs. Scoop Bins
+Sound system crews customize their speakers based on specific acoustic characteristics:
+- **Scoop Bins (Folded Horns):** Popularized by roots reggae and dub sound systems, scoops place the speaker driver in a custom chamber where the rear sound wave travel is extended through a folded physical horn path. This phase-aligns the rear wave with the front wave, producing a warm, incredibly powerful bass response between 35Hz and 80Hz.
+- **Bass Reflex Cabinets:** Ported boxes designed for maximum transient response. While reflex cabs do not amplify bass as efficiently as horns, they offer highly accurate, punchy kick drum reproduction ideal for fast drum and bass and garage breaks.
+- **Crossover Networks:** Active multi-way crossovers divide the audio signal cleanly into sub-bass (30Hz-80Hz), mid-bass (80Hz-250Hz), mid-range (250Hz-5kHz), and high-frequencies (5kHz-20kHz). This ensures high-voltage amplifiers only push targeted frequencies to matching drivers.
+
+## Phase Alignment and Cancellation Nodes
+A common sound system mistake is placing cabinets without considering room acoustics. If two sub-woofers are slightly out of phase, their sound waves will collide and cancel each other out, creating dead zones in the venue where the bass completely disappears. 
+
+Always align your sub-woofers in a single coupled boundary (stacked closely together) to boost output by +3dB, and use active DSP delay lines to align the subs with the main high-frequency speaker horns. Perfect phase alignment translates to pristine bass weight.`,
+  },
+  {
+    id: "dubplate-preservation",
+    title: "The Art of the Dubplate: Preservation & Digitization for Selectors",
+    slug: "art-of-the-dubplate-preservation-and-digitization-for-selectors",
+    summary: "Preserving rare acetate records: a professional's guide to stylus calibration, cleaning, and archival digitizing techniques.",
+    author: "Vinyl-Rescue",
+    author_title: "Archivist & Mastering Engineer",
+    published_at: "2026-08-14T11:00:00Z",
+    tags: ["DUBPLATES", "VINYL", "ARCHIVE", "PRESERVATION"],
+    content: `## The Acetate Dubplate Legacy
+In soundsystem culture, a dubplate is a special, heavy acetate disc containing exclusive unreleased tracks cut directly from a studio lathe. Unlike durable mass-manufactured vinyl records, acetates are made of a soft nitrocellulose lacquer coated onto an aluminum core. Every single playback degrades the lacquer, meaning a dubplate has a limited lifespan—usually surviving only 30 to 50 plays before background noise and high-frequency loss take over.
+
+## Proper Storage and Handling
+Preserving your exclusive plates requires strict adherence to climate and handling protocols:
+- **Temperature Constraints:** Keep acetates stored vertically in a cool, dry room (ideal range: 15°C to 20°C with 30-40% relative humidity). Excessive heat causes the lacquer to crack and peel away from the aluminum center.
+- **No Chemical Solvents:** Never clean an acetate dubplate with standard commercial vinyl cleaning solutions containing alcohol. Alcohol breaks down nitrocellulose, instantly dissolving the delicate high-frequency grooves. Use only double-distilled deionized water or specialized archival fluids.
+- **Stylus Selection:** Use microline or elliptical styluses rather than heavy DJ scratching needles. Archival playbacks should employ light tracking weights (between 1.2 and 1.8 grams) to minimize groove friction.
+
+## High-Resolution Digitization Workflow
+To stream these tracks on digital platforms like SPARKZ.TV, you must digitize them with maximum fidelity:
+- **The Pre-Amp:** Connect your turntable to a high-fidelity studio phono pre-amp with a flat RIAA curve and low noise floor.
+- **Analog-to-Digital Converter (ADC):** Capture the signal at a minimum resolution of 24-bit / 96kHz PCM WAV format. This high dynamic range preserves the original analog transients and low-end warmth.
+- **Restoration:** Use non-destructive digital restoration tools like iZotope RX to repair heavy clicks and pops, but avoid aggressive noise reduction that strips away the natural harmonic character of the recording.`,
+  },
+  {
+    id: "modern-broadcast-tech",
+    title: "Modern Broadcast Tech: Latency, Audio Codecs, and Stream Optimization",
+    slug: "modern-broadcast-tech-latency-audio-codecs-and-stream-optimization",
+    summary: "How SPARKZ.TV handles RTMP ingest, high-bandwidth AAC audio compression, and adaptive HLS streaming for mobile and desktop systems.",
+    author: "Sys-Admin",
+    author_title: "Lead Infrastructure Engineer",
+    published_at: "2026-08-14T12:00:00Z",
+    tags: ["STREAMING-TECH", "RTMP", "HLS", "AUDIO-CODECS", "DEV-LOGS"],
+    content: `## Demystifying Ingest and Egest Latency
+Live video streaming is a complex chain of capturing, encoding, transmitting, packaging, and rendering. For an interactive underground radio platform like SPARKZ.TV, minimizing latency is critical. If a DJ responds to a chat message, that interaction should happen in real time, not 30 seconds later.
+
+## Encoding Protocols: From RTMP to HLS
+Our live streaming pipelines operate on specialized delivery technologies:
+- **RTMP (Real-Time Messaging Protocol):** Used as our primary ingest protocol. When a creator streams from OBS (Open Broadcaster Software), the software encodes the video into H.264 packets and the audio into AAC packets, pushing them to our server via a secure RTMP handshake. RTMP is incredibly fast and highly efficient for uplinks.
+- **Adaptive Bitrate HLS (HTTP Live Streaming):** Mainstream browsers cannot decode raw RTMP feeds directly. Our servers ingest the RTMP stream, slice the video into tiny 2-second chunks, and create a playlist index file (.m3u8) at multiple quality profiles. This allows your viewer's browser to seamlessly switch resolutions (from 1080p down to 360p) depending on their connection strength.
+- **High-Fidelity Audio Compression:** While commercial platforms crush audio feeds down to 96kbps or 128kbps MP3s, SPARKZ.TV implements **320kbps AAC-LC** (Advanced Audio Coding Low-Complexity). This provides near-lossless audio fidelity, preserving the stereo separation and sub-bass transients of your tracks.
+
+## Optimizing Your OBS Settings for SPARKZ.TV
+To get the absolute best performance on our platform, configure your OBS broadcast client as follows:
+- **Audio Bitrate:** 320 Kbps (Codec: AAC)
+- **Video Bitrate:** 3500 - 6000 Kbps (depending on your upload speed)
+- **Keyframe Interval:** 2 seconds (mandatory for optimal HLS segment generation)
+- **CPU Usage Preset:** x264 'veryfast' or hardware encoders like NVENC/AMF to avoid dropped frames during active mixing.`,
+  },
 ];
 
 export default function Blog() {
