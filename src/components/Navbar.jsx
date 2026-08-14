@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download, Smartphone, Monitor, Star } from "lucide-react";
+import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download, Smartphone, Monitor, Star, BookOpen } from "lucide-react";
 import { fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import { usePWA } from "@/hooks/usePWA";
@@ -230,6 +230,15 @@ export default function Navbar() {
                       THE LOUNGE
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
+                    <Link
+                      to="/blog"
+                      data-testid="nav-blog"
+                      className="flex cursor-pointer items-center gap-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-zinc-200 hover:bg-[#0f0f0f] focus:bg-[#0f0f0f] focus:text-white"
+                    >
+                      THE BLOG
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator className="my-0 bg-[#27272a]" />
                   <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
                     <Link
@@ -364,6 +373,13 @@ function UserMenu({ user, onLogout }) {
           testid="user-menu-lounge"
         >
           THE LOUNGE
+        </MenuLink>
+        <MenuLink
+          to="/blog"
+          icon={<BookOpen className="h-3.5 w-3.5" />}
+          testid="user-menu-blog"
+        >
+          THE BLOG
         </MenuLink>
         <DropdownMenuSeparator className="my-0 bg-[#27272a]" />
         <DropdownMenuItem

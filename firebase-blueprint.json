@@ -235,6 +235,27 @@
         "viewer_count": { "type": "number", "required": true },
         "created_at": { "type": "string", "required": true }
       }
+    },
+    "blog_posts": {
+      "path": "blog_posts/{postId}",
+      "description": "Platform announcement and origin launch articles",
+      "allow": {
+        "read": "true",
+        "create": "request.auth != null && request.auth.token.email == 'markysparks99@gmail.com'",
+        "update": "request.auth != null && request.auth.token.email == 'markysparks99@gmail.com'",
+        "delete": "request.auth != null && request.auth.token.email == 'markysparks99@gmail.com'"
+      },
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "slug": { "type": "string", "required": true },
+        "summary": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true },
+        "author": { "type": "string", "required": true },
+        "author_title": { "type": "string", "required": true },
+        "published_at": { "type": "string", "required": true },
+        "tags": { "type": "array", "required": false }
+      }
     }
   }
 }

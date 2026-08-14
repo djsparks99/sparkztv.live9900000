@@ -10,7 +10,8 @@ import {
   Sparkles,
   CheckCircle2,
   Lock,
-  LifeBuoy
+  LifeBuoy,
+  BookOpen
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -109,6 +110,15 @@ export default function Footer() {
               <LifeBuoy className="h-3.5 w-3.5" />
               <span>Support</span>
             </button>
+
+            <Link
+              to="/blog"
+              data-testid="footer-blog-link"
+              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer border border-[#e5ff00]/20 bg-[#e5ff00]/5 px-2.5 py-1 text-zinc-300 hover:border-[#e5ff00]/50"
+            >
+              <BookOpen className="h-3.5 w-3.5 text-[#e5ff00]" />
+              <span>The Journal</span>
+            </Link>
           </div>
         </div>
 

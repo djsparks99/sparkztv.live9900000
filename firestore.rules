@@ -99,5 +99,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if false;
     }
+
+    // Blog Posts
+    match /blog_posts/{postId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.token.email == "markysparks99@gmail.com";
+    }
   }
 }

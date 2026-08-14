@@ -17,6 +17,7 @@ import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
 import Payouts from "@/pages/Payouts";
 import Lounge from "@/pages/Lounge";
+import Blog from "@/pages/Blog";
 import ObsOverlay from "@/pages/ObsOverlay";
 import SandboxCheckout from "@/pages/SandboxCheckout";
 import SandboxStripeOnboarding from "@/pages/SandboxStripeOnboarding";
@@ -154,6 +155,7 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/channel/:username" element={<Channel />} />
             <Route path="/lounge" element={<Lounge />} />
+            <Route path="/blog" element={<Blog />} />
             <Route element={<ProtectedLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
