@@ -13,4 +13,8 @@ Allow: /
 User-agent: *
 Allow: /
 
+# Sitemap Index
 Sitemap: https://sparkztv.live/sitemap.xml
+
+# LLM Crawler Index
+# llms.txt is located at https://sparkztv.live/llms.txt

@@ -428,6 +428,40 @@ export default function Browse() {
         </div>
       </section>
 
+      {/* Platform Manifesto / SEO Transmission Grid */}
+      <section className="border-t border-[#1a1a1d] bg-[#030304] py-16 px-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+            <div className="space-y-4">
+              <div className="font-mono text-xs uppercase tracking-widest text-[#e5ff00]">// THE SIGNAL FREQUENCY</div>
+              <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-white leading-tight">
+                PRESERVING UNDERGROUND SOUND SYSTEM CULTURE &amp; DNB FREQUENCIES
+              </h2>
+              <p className="font-sans text-zinc-400 text-sm leading-relaxed">
+                We engineered <strong className="text-white">SPARKZ.TV</strong> to give independent electronic music broadcasters, bedroom selectors, and pirate-radio pioneers a space to stream live sets without algorithmic noise. Whether you are spinning deep <strong>drum and bass</strong>, rolling UK garage, <strong>old skool jungle</strong> vinyl, heavy-weight <strong>dubstep</strong> dubplates, or driving house and techno, our server scales with your audience.
+              </p>
+              <p className="font-sans text-zinc-400 text-sm leading-relaxed">
+                Tune in to discover live radio channels, interact in our selector chats, and trade exclusive white labels with music fans across the globe.
+              </p>
+            </div>
+            <div className="grid gap-4 font-mono text-xs text-zinc-500">
+              <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
+                <div className="font-bold text-zinc-300 mb-1.5 uppercase">// HIGH RESOLUTION BROADCAST QUALITY</div>
+                <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
+                  Our custom media pipelines route dynamic adaptive channels directly to listeners, prioritizing <strong>sound system</strong> depth, rich <strong>bass dnb</strong> resonance, and 320kbps stereo clarity. Experience true spectrum fidelity.
+                </p>
+              </div>
+              <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
+                <div className="font-bold text-zinc-300 mb-1.5 uppercase">// REAL-TIME WEB COGNITION</div>
+                <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
+                  Earn functional Watts points automatically for every minute of live audio streams watched. Empower your favorite <strong>underground</strong> broadcasters by submitting custom live reactions or unlocking elite channel badges.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Featured DJ Profiles Section with Firestore Follow Integration */}
       <FeaturedDJProfiles />
 

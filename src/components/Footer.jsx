@@ -11,7 +11,14 @@ import {
   CheckCircle2,
   Lock,
   LifeBuoy,
-  BookOpen
+  BookOpen,
+  MapPin,
+  Phone,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Linkedin
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,7 +59,7 @@ export default function Footer() {
         <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
           
           {/* Brand & Tagline */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="font-mono text-lg font-black tracking-widest text-[#e5ff00]">
                 SPARKZ.TV
@@ -64,8 +71,36 @@ export default function Footer() {
             <p className="font-mono text-[11px] uppercase tracking-wider text-zinc-500 max-w-md">
               High-bandwidth decentralized live video streaming for underground creators, DJs, and electronic broadcasts.
             </p>
-            <div className="pt-1 font-mono text-xs text-zinc-400">
-              Support Email: <a href="mailto:support@sparkztv.com" className="text-[#e5ff00] hover:underline">support@sparkztv.com</a>
+            <div className="space-y-1.5 font-mono text-xs text-zinc-400">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 text-[#e5ff00]" />
+                <span>Broadcasting HQ: 100 Shoreditch High St, London, E1 6JQ, UK</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-3.5 w-3.5 text-[#e5ff00]" />
+                <span>Hotline: +44 20 7946 0192</span>
+              </div>
+              <div>
+                Support Email: <a href="mailto:support@sparkztv.com" className="text-[#e5ff00] hover:underline">support@sparkztv.com</a>
+              </div>
+            </div>
+            {/* Social Media Link Building & Identity Indexes */}
+            <div className="flex items-center gap-3 pt-2 text-zinc-500">
+              <a href="https://www.facebook.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Facebook Page">
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a href="https://x.com/sparkztv_live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="X Profile">
+                <Twitter className="h-4 w-4" />
+              </a>
+              <a href="https://www.instagram.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Instagram Profile">
+                <Instagram className="h-4 w-4" />
+              </a>
+              <a href="https://www.youtube.com/@sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="YouTube Channel">
+                <Youtube className="h-4 w-4" />
+              </a>
+              <a href="https://www.linkedin.com/company/sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="LinkedIn Profile">
+                <Linkedin className="h-4 w-4" />
+              </a>
             </div>
           </div>
 

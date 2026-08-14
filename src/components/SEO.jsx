@@ -98,6 +98,72 @@ export default function SEO({
     updateOrCreateMeta("property", "og:image:width", "1200");
     updateOrCreateMeta("property", "og:image:height", "630");
 
+    // 7. Structured Schema Markup Injection (Organization, Person, WebSite & LocalBusiness)
+    let schemaScript = document.getElementById("sparkz-seo-schema");
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.id = "sparkz-seo-schema";
+      schemaScript.setAttribute("type", "application/ld+json");
+      document.head.appendChild(schemaScript);
+    }
+
+    const orgSchema = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "EntertainmentBusiness",
+          "@id": "https://sparkztv.live/#organization",
+          "name": "SPARKZ.TV",
+          "url": "https://sparkztv.live",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://sparkztv.live/logo.svg",
+            "width": "112",
+            "height": "112"
+          },
+          "image": "https://sparkztv.live/og-image.jpg",
+          "description": "High-fidelity live audio and video streaming for underground electronic music, DJs, and live radio broadcasts.",
+          "telephone": "+44 20 7946 0192",
+          "priceRange": "$$",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "100 Shoreditch High St",
+            "addressLocality": "London",
+            "postalCode": "E1 6JQ",
+            "addressCountry": "GB"
+          },
+          "sameAs": [
+            "https://www.facebook.com/sparkztv.live",
+            "https://x.com/sparkztv_live",
+            "https://www.instagram.com/sparkztv.live",
+            "https://www.youtube.com/@sparkztv",
+            "https://www.linkedin.com/company/sparkztv"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://sparkztv.live/#website",
+          "url": "https://sparkztv.live",
+          "name": "SPARKZ.TV",
+          "publisher": {
+            "@id": "https://sparkztv.live/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://sparkztv.live/directory?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    };
+
+    schemaScript.textContent = JSON.stringify(orgSchema);
+
+    return () => {
+      const el = document.getElementById("sparkz-seo-schema");
+      if (el) el.remove();
+    };
+
   }, [title, description, image, url, type, isLive, category, keywords]);
 
   return null; // Component does not render any visual UI elements itself

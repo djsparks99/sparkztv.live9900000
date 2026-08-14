@@ -1,0 +1,24 @@
+# SPARKZ.TV — Underground Electronic Live Stream Platform
+
+> SPARKZ.TV is a high-performance, developer-engineered decentralized streaming platform dedicated to live electronic music, pirate-radio culture, sound systems, and selector communities. 
+
+This document serves as an AI-scannable and LLM-friendly index of SPARKZ.TV's architecture, directories, and capabilities.
+
+## Primary Services & Capabilities
+- **High-Fidelity Streams**: Video and audio routed through dynamic, ultra-low latency ingest streams with 320kbps audio spectrum.
+- **Creator Studio**: Live broadcast setup console containing OBS stream keys, latency settings, and active ingest analytics.
+- **24-Hour Stories**: Self-destructing, modern ephemeral media transmission network for DJs and crews to share updates.
+- **Interactive Chat & Watts Points**: Real-time server-side WebSockets communication with active gamified stream engagement.
+
+## Key Station Directories & Links
+- **Homepage / Stations**: [https://sparkztv.live/] - The main hub hosting active streams, carousels, and upcoming shows.
+- **Station Directory**: [https://sparkztv.live/directory] - The global tuner, listing all active/offline channels.
+- **Live Stream**: [https://sparkztv.live/live] - Instant live audio-player.
+- **The Journal (Blog)**: [https://sparkztv.live/blog] - Dynamic editorial, artist spotlights, and signal updates.
+- **FAQ & Support Form**: Accessible at the footer for live RTMP or story issues.
+
+## Technical Metadata & Audio
+- **Ingest Latency**: < 2.0 seconds ultra-low latency (ULL).
+- **Audio Codec**: High-fidelity 320kbps stereo AAC.
+- **Video Source**: Amazon IVS / RTMP ingest.
+- **Gamification**: +10 Watts points awarded per minute watched.
