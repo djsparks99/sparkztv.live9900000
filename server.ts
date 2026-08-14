@@ -3574,6 +3574,95 @@ async function startServer() {
     return res.status(404).send("Not Found");
   });
 
+  // Dynamic sitemap.xml generator that lists static pages AND all custom DJ channels dynamically
+  app.get("/sitemap.xml", async (req, res) => {
+    const protocol = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+    const host = req.get("host") || "sparkztv.live";
+    const baseUrl = `${protocol}://${host}`;
+
+    let channels: any[] = [];
+    try {
+      const docs = await getFirestoreCollectionSafe("channels");
+      docs.forEach((doc: any) => {
+        const data = doc.data();
+        if (data && data.username) {
+          channels.push({ id: doc.id, ...data });
+        }
+      });
+    } catch (err: any) {
+      console.warn("[sitemap.xml] Error loading dynamic channels from Firestore, using in-memory fallbacks:", err.message);
+    }
+
+    if (channels.length === 0) {
+      for (const cDoc of db.channels.values()) {
+        const username = (cDoc.username || "").toLowerCase().trim();
+        if (username && username !== "undefined" && username !== "null" && !isDummyOrInvalid(cDoc)) {
+          channels.push(channelPublic(cDoc));
+        }
+      }
+    }
+
+    // Static pages
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <changefreq>always</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/directory</loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/live</loc>
+    <changefreq>always</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/schedule</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/chat</loc>
+    <changefreq>always</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/faq</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/register</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+
+    // Append dynamic channels
+    for (const chan of channels) {
+      const username = chan.username || chan.id;
+      if (username) {
+        const encodedUser = encodeURIComponent(username.toLowerCase().trim());
+        xml += `
+  <url>
+    <loc>${baseUrl}/channel/${encodedUser}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+      }
+    }
+
+    xml += `
+</urlset>`;
+
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader("Cache-Control", "public, max-age=60"); // Cache for 1 minute
+    return res.status(200).send(xml);
+  });
+
   // Dynamic feed.xml generator from recent stream metadata records in Firestore (with in-memory fallback)
   app.get("/feed.xml", async (req, res) => {
     const protocol = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";

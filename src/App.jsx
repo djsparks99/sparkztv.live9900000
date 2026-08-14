@@ -128,7 +128,7 @@ function ScrollToTop() {
 export default function App() {
   useEffect(() => {
     // Force page title back after analytics script may overwrite it
-    document.title = "Sparkz.TV — Underground Live Streaming";
+    document.title = "SPARKZ.TV - Underground Live Radio, DJ Sets & Broadcasters";
   }, []);
 
   return (

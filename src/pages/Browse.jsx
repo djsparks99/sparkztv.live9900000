@@ -250,7 +250,18 @@ export default function Browse() {
     return () => window.removeEventListener("channel-updated", handleChannelUpdated);
   }, []);
 
-  const stableChannels = useStableLiveChannels(rawChannels);
+  const rawStableChannels = useStableLiveChannels(rawChannels);
+
+  const stableChannels = (() => {
+    const unique = new Map();
+    (rawStableChannels || []).forEach((c) => {
+      const key = (c.username || "").toLowerCase().trim();
+      if (key && !unique.has(key)) {
+        unique.set(key, c);
+      }
+    });
+    return Array.from(unique.values());
+  })();
 
   let filteredChannels = stableChannels;
   if (q.trim()) {
@@ -286,6 +297,7 @@ export default function Browse() {
         image="/og-image.jpg"
         keywords="sparkztv, sparkz, live DJ streams, underground radio, dnb livestream, drum and bass set, breakbeat jungle, tech house live, garage music, dubplate selector, sound system culture"
       />
+      <h1 className="sr-only">Underground Live Radio, DJ Sets &amp; Broadcasters on SPARKZ.TV</h1>
       {/* Dynamic Twitch-style stream carousel */}
       <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />
 
@@ -418,6 +430,40 @@ export default function Browse() {
 
       {/* Featured DJ Profiles Section with Firestore Follow Integration */}
       <FeaturedDJProfiles />
+
+      {/* Search Crawler Friendly Sitemap & Platform Index Hub */}
+      <section className="border-t border-[#1c1c1f] bg-[#050506] py-16 px-6">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="font-display text-lg font-bold uppercase tracking-wider text-[#e5ff00] mb-4">// PLATFORM DIRECTORY &amp; STATION INDEX</h2>
+          <p className="text-zinc-400 font-sans text-sm leading-relaxed mb-8">
+            Welcome to <strong className="text-[#e5ff00]">SPARKZ.TV</strong>, the definitive underground broadcasting hub for electronic music creators, selectors, and pirate-radio sound system selectors. Stream high-fidelity, high-bandwidth live audio/video sets spanning deep drum and bass, jungle, dubstep, UK garage, and deep tech house. Discover dynamic transmissions, browse schedules, read our journal, or start your own channel.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-xs font-mono">
+            <div>
+              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// SIGNALS</h3>
+              <ul className="space-y-2">
+                <li><Link to="/directory" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MAIN STATION DIRECTORY</Link></li>
+                <li><Link to="/live" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ QUICK LIVE PLAYER</Link></li>
+                <li><Link to="/lounge" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ SELECTOR LOUNGE CHAT</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// RESOURCES</h3>
+              <ul className="space-y-2">
+                <li><Link to="/blog" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ THE JOURNAL (NEWS &amp; CULTURE)</Link></li>
+                <li><Link to="/register" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ CREATE BROADCASTER ACCOUNT</Link></li>
+                <li><Link to="/login" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MEMBER LOGIN PORTAL</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// BROADCASTING ARCHETYPE</h3>
+              <p className="text-zinc-500 font-sans leading-relaxed text-[11px] uppercase">
+                SPARKZ.TV is optimized for high-fidelity 320kbps audio performance. No third-party advertisements or algorithmic dampeners.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

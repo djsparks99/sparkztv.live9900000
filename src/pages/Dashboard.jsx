@@ -289,7 +289,7 @@ export default function Dashboard() {
   if (user === null) {
     return (
       <div className="mx-auto max-w-md px-6 py-24">
-        <div className="border border-[#27272a] bg-[#0a0a0a] p-8 text-center">
+        <div className="border border-[#27272a] bg-[#0a0a0a] p-4 sm:p-6 md:p-8 text-center">
           <div className="label-caps text-red-500 mb-4">// ACCESS DENIED</div>
           <h2 className="font-display text-2xl font-black mb-2 tracking-tight">NOT AUTHENTICATED</h2>
           <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
@@ -316,7 +316,7 @@ export default function Dashboard() {
   if (error && !channel) {
     return (
       <div className="mx-auto max-w-xl px-6 py-16">
-        <div className="border border-red-950 bg-[#0a0a0a] p-8 text-center">
+        <div className="border border-red-950 bg-[#0a0a0a] p-4 sm:p-6 md:p-8 text-center">
           <div className="label-caps text-red-500 mb-2">// LOADING ERROR</div>
           <h2 className="font-display text-xl font-bold mb-4 tracking-tight">FAILED TO LOAD CREATOR STUDIO</h2>
           <p className="text-zinc-400 text-sm mb-6 font-mono border border-[#27272a] bg-black p-3 rounded text-left overflow-x-auto">
@@ -334,7 +334,7 @@ export default function Dashboard() {
   if (!channel) {
     return (
       <div className="mx-auto max-w-xl px-6 py-16">
-        <div className="border border-zinc-800 bg-[#0a0a0a] p-8 text-center">
+        <div className="border border-zinc-800 bg-[#0a0a0a] p-4 sm:p-6 md:p-8 text-center">
           <div className="label-caps text-zinc-500 mb-2">// INITIALIZING</div>
           <h2 className="font-display text-xl font-bold mb-4 tracking-tight">SETTING UP CREATOR STUDIO</h2>
           <p className="text-zinc-400 text-sm mb-6 leading-relaxed">

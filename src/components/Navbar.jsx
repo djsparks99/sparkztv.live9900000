@@ -153,7 +153,7 @@ export default function Navbar() {
             type="button"
             onClick={toggleTheme}
             data-testid="theme-toggle-btn"
-            className="flex items-center gap-1.5 border border-[#27272a] bg-black px-2.5 py-1.5 font-mono text-[11px] uppercase font-bold tracking-wider text-zinc-300 hover:border-[#e5ff00] hover:text-[#e5ff00] transition-colors"
+            className="hidden md:flex items-center gap-1.5 border border-[#27272a] bg-black px-2.5 py-1.5 font-mono text-[11px] uppercase font-bold tracking-wider text-zinc-300 hover:border-[#e5ff00] hover:text-[#e5ff00] transition-colors"
             title={isLight ? "Switch to Original Dark Cyber Theme" : "Switch to Light Theme"}
             aria-label="Toggle Color Theme"
           >

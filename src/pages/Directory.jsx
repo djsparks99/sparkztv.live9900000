@@ -258,7 +258,7 @@ export default function Directory() {
       />
       <div className="mx-auto max-w-[1440px] px-6 pt-8 pb-24 sm:pb-28 lg:pb-32" data-testid="streamer-directory-page">
       {/* Header Banner */}
-      <div className="border border-[#27272a] bg-[#0a0a0a] p-8">
+      <div className="border border-[#27272a] bg-[#0a0a0a] p-4 sm:p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2">
