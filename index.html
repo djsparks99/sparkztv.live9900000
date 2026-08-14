@@ -296,11 +296,11 @@
                     octx.save();
                     octx.translate(width / 2, height / 2 - 40);
                     
-                    octx.shadowColor = '#ccff00';
+                    octx.shadowColor = '#dbfc01';
                     octx.shadowBlur = 12;
-                    octx.strokeStyle = '#0d0d0d';
+                    octx.strokeStyle = '#111524';
                     octx.lineWidth = 4;
-                    octx.fillStyle = '#e2ff3b';
+                    octx.fillStyle = '#dbfc01';
                     octx.lineJoin = 'round';
                     octx.lineCap = 'round';
                     
@@ -320,12 +320,12 @@
                     octx.lineTo(-28, 36);
                     octx.lineTo(-6, 28);
                     octx.closePath();
-                    octx.fillStyle = '#e2ff3b';
+                    octx.fillStyle = '#dbfc01';
                     octx.fill();
                     octx.stroke();
 
                     // Draw eyes
-                    octx.fillStyle = '#0d0d0d';
+                    octx.fillStyle = '#111524';
                     octx.shadowBlur = 0; // Turn off shadow blur for eyes for crisp look
                     
                     // Left eye
@@ -342,7 +342,7 @@
                     octx.fill();
 
                     // Right eye
-                    octx.fillStyle = '#0d0d0d';
+                    octx.fillStyle = '#111524';
                     octx.beginPath();
                     octx.arc(11, 4, 6.5, 0, Math.PI * 2);
                     octx.fill();

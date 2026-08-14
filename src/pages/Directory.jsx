@@ -4,6 +4,7 @@ import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import SEO from "@/components/SEO";
+import FeaturedDJProfiles from "@/components/FeaturedDJProfiles";
 import { Search, Radio, Eye, User, Calendar, Clock, Filter, X } from "lucide-react";
 
 const CATEGORIES = [
@@ -412,6 +413,9 @@ export default function Directory() {
         )}
       </div>
     </div>
+    
+    {/* Featured Resident DJ Profiles & Firestore Follow Section */}
+    <FeaturedDJProfiles title="FEATURED UNDERGROUND SELECTORS" subtitle="Verified Broadcasters & Residents" />
     </div>
   );
 }

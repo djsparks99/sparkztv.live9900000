@@ -1,81 +1,80 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Definitions for gradients and filters -->
   <defs>
-    <!-- Premium Neon Yellow Glow Filter -->
-    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="14" result="blur" />
-      <feComponentTransfer in="blur" result="glow">
-        <feFuncA type="linear" slope="0.65" />
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode in="glow" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <!-- Subtle gradient for the main bubble fill to look high-definition -->
-    <linearGradient id="bubbleFillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f2ff44" />
-      <stop offset="100%" stop-color="#d4eb00" />
+    <!-- Vibrant Neon Yellow-Green Gradient matching the uploaded logo exactly -->
+    <linearGradient id="bubbleBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#efff0a" />
+      <stop offset="50%" stop-color="#dbfc01" />
+      <stop offset="100%" stop-color="#c1eb00" />
     </linearGradient>
-
-    <!-- Soft glow gradient for the eye glints -->
-    <radialGradient id="glintGrad" cx="35%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="100%" stop-color="#f0f0f0" />
-    </radialGradient>
+    
+    <!-- Subtle drop shadow for the inner eyes -->
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.15" />
+    </filter>
   </defs>
 
-  <!-- BACKGROUND GLOW: Soft neon yellow backdrop bloom -->
-  <path 
-    d="M 155,110 H 357 A 45,45 0 0,1 402,155 V 305 A 45,45 0 0,1 357,350 H 175 C 140,350 100,380 90,410 C 105,380 110,350 110,335 V 155 A 45,45 0 0,1 155,110 Z" 
-    fill="#e5ff00" 
-    stroke="#e5ff00" 
-    stroke-width="36" 
-    stroke-linejoin="round" 
-    filter="url(#neonGlow)" 
-    opacity="0.45" 
-  />
+  <!-- Group with crisp rendering -->
+  <g shape-rendering="geometricPrecision">
+    <!-- LAYER 1: Thick Outer Dark Outline (Perfect Silhouette) -->
+    <path d="M 185 160
+             H 327
+             A 24 24 0 0 1 351 184
+             V 316
+             A 24 24 0 0 1 327 340
+             H 215
+             C 190 340, 162 355, 148 375
+             C 154 355, 161 335, 161 325
+             V 184
+             A 24 24 0 0 1 185 160 Z"
+          fill="#111524"
+          stroke="#111524"
+          stroke-width="16"
+          stroke-linejoin="round"
+          stroke-linecap="round" />
 
-  <!-- LAYER 1: Thick Outer Crisp Yellow Border -->
-  <path 
-    d="M 155,110 H 357 A 45,45 0 0,1 402,155 V 305 A 45,45 0 0,1 357,350 H 175 C 140,350 100,380 90,410 C 105,380 110,350 110,335 V 155 A 45,45 0 0,1 155,110 Z" 
-    fill="#e5ff00" 
-    stroke="#e5ff00" 
-    stroke-width="26" 
-    stroke-linejoin="round" 
-  />
+    <!-- LAYER 2: Main Neon Yellow-Green Fill (Inner Shape) -->
+    <path d="M 185 160
+             H 327
+             A 24 24 0 0 1 351 184
+             V 316
+             A 24 24 0 0 1 327 340
+             H 215
+             C 190 340, 162 355, 148 375
+             C 154 355, 161 335, 161 325
+             V 184
+             A 24 24 0 0 1 185 160 Z"
+          fill="url(#bubbleBodyGrad)" />
 
-  <!-- LAYER 2: Sleek Dark Outline (Creates the high-contrast separation) -->
-  <path 
-    d="M 155,110 H 357 A 45,45 0 0,1 402,155 V 305 A 45,45 0 0,1 357,350 H 175 C 140,350 100,380 90,410 C 105,380 110,350 110,335 V 155 A 45,45 0 0,1 155,110 Z" 
-    fill="#121214" 
-    stroke="#121214" 
-    stroke-width="12" 
-    stroke-linejoin="round" 
-  />
+    <!-- LAYER 3: White Glossy Inner Bevel Highlight (Matching the gorgeous plastic sticker look) -->
+    <path d="M 185 172
+             H 327
+             A 12 12 0 0 1 339 184"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="5"
+          stroke-linecap="round"
+          opacity="0.65" />
 
-  <!-- LAYER 3: Main Solid Neon Yellow/Green Chat Bubble Fill -->
-  <path 
-    d="M 155,110 H 357 A 45,45 0 0,1 402,155 V 305 A 45,45 0 0,1 357,350 H 175 C 140,350 100,380 90,410 C 105,380 110,350 110,335 V 155 A 45,45 0 0,1 155,110 Z" 
-    fill="url(#bubbleFillGrad)" 
-  />
+    <!-- LAYER 4: Kawaii Cartoon Eyes -->
+    <!-- Left Eye Group -->
+    <g filter="url(#softShadow)">
+      <!-- Left Pupil -->
+      <circle cx="216" cy="245" r="26" fill="#111524" />
+      <!-- Left Top-Left Highlight -->
+      <circle cx="206" cy="235" r="8" fill="#ffffff" />
+      <!-- Left Bottom-Right Highlight -->
+      <circle cx="226" cy="255" r="4.5" fill="#ffffff" />
+    </g>
 
-  <!-- MASCOT EYES -->
-  <g>
-    <!-- LEFT EYE -->
-    <!-- Base black iris -->
-    <circle cx="205" cy="225" r="32" fill="#000000" />
-    <!-- Primary white glint -->
-    <circle cx="215" cy="215" r="10" fill="url(#glintGrad)" />
-    <!-- Secondary soft glint -->
-    <circle cx="195" cy="237" r="5" fill="#ffffff" opacity="0.9" />
-
-    <!-- RIGHT EYE -->
-    <!-- Base black iris -->
-    <circle cx="307" cy="225" r="32" fill="#000000" />
-    <!-- Primary white glint -->
-    <circle cx="317" cy="215" r="10" fill="url(#glintGrad)" />
-    <!-- Secondary soft glint -->
-    <circle cx="297" cy="237" r="5" fill="#ffffff" opacity="0.9" />
+    <!-- Right Eye Group -->
+    <g filter="url(#softShadow)">
+      <!-- Right Pupil -->
+      <circle cx="296" cy="245" r="26" fill="#111524" />
+      <!-- Right Top-Left Highlight -->
+      <circle cx="286" cy="235" r="8" fill="#ffffff" />
+      <!-- Right Bottom-Right Highlight -->
+      <circle cx="306" cy="255" r="4.5" fill="#ffffff" />
+    </g>
   </g>
 </svg>

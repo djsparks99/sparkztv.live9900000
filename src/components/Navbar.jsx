@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download, Smartphone, Monitor } from "lucide-react";
+import { Radio, User, LogOut, LayoutDashboard, Settings, Tv, ChevronDown, Search, Sun, Moon, Compass, Layers, MessageSquare, Coins, Download, Smartphone, Monitor, Star } from "lucide-react";
 import { fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import { usePWA } from "@/hooks/usePWA";
@@ -9,55 +9,12 @@ import { toast } from "sonner";
 // Transparent yellow speech bubble logo sticker icon with cute cartoon eyes
 function SpeechBubbleLogo({ className = "h-10 w-10" }) {
   return (
-    <svg
-      viewBox="0 0 100 100"
-      className={className}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      shapeRendering="geometricPrecision"
-      textRendering="geometricPrecision"
-    >
-      <defs>
-        <linearGradient id="bubbleYellowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#f3ff26" />
-          <stop offset="100%" stopColor="#d5ee00" />
-        </linearGradient>
-      </defs>
-
-      {/* LAYER 1: Thick Outer Crisp Yellow Border */}
-      <path
-        d="M 28 12 L 72 12 A 16 16 0 0 1 88 28 L 88 60 A 16 16 0 0 1 72 76 L 34 76 L 19 89 C 16 91 11 88 13 84 L 16 75 A 16 16 0 0 1 12 60 L 12 28 A 16 16 0 0 1 28 12 Z"
-        fill="#e5ff00"
-        stroke="#e5ff00"
-        strokeWidth="10"
-        strokeLinejoin="round"
-      />
-
-      {/* LAYER 2: Sleek Dark Outline (Creates the high-contrast separation) */}
-      <path
-        d="M 28 12 L 72 12 A 16 16 0 0 1 88 28 L 88 60 A 16 16 0 0 1 72 76 L 34 76 L 19 89 C 16 91 11 88 13 84 L 16 75 A 16 16 0 0 1 12 60 L 12 28 A 16 16 0 0 1 28 12 Z"
-        fill="#0d0d0d"
-        stroke="#0d0d0d"
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-
-      {/* LAYER 3: Main Solid Neon Yellow/Green Chat Bubble Fill */}
-      <path
-        d="M 28 12 L 72 12 A 16 16 0 0 1 88 28 L 88 60 A 16 16 0 0 1 72 76 L 34 76 L 19 89 C 16 91 11 88 13 84 L 16 75 A 16 16 0 0 1 12 60 L 12 28 A 16 16 0 0 1 28 12 Z"
-        fill="url(#bubbleYellowGrad)"
-      />
-
-      {/* Left Cartoon Eye */}
-      <circle cx="37" cy="43" r="8.5" fill="#0d0d0d" />
-      <circle cx="34.5" cy="40.5" r="3" fill="#ffffff" />
-      <circle cx="39.5" cy="45.5" r="1.3" fill="#ffffff" />
-
-      {/* Right Cartoon Eye */}
-      <circle cx="63" cy="43" r="8.5" fill="#0d0d0d" />
-      <circle cx="60.5" cy="40.5" r="3" fill="#ffffff" />
-      <circle cx="65.5" cy="45.5" r="1.3" fill="#ffffff" />
-    </svg>
+    <img
+      src="/logo.svg"
+      alt="Sparkz.TV Logo"
+      className={`${className} object-contain`}
+      referrerPolicy="no-referrer"
+    />
   );
 }
 import {
@@ -73,7 +30,9 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { isInstallable, installApp } = usePWA();
-  const [navSearch, setNavSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+  const [navSearch, setNavSearch] = useState(urlQuery);
   const [isLight, setIsLight] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("sparkz_theme") === "light";
@@ -91,6 +50,11 @@ export default function Navbar() {
     }
   }, [isLight]);
 
+  // Sync navbar search state with URL search query parameter
+  useEffect(() => {
+    setNavSearch(urlQuery);
+  }, [urlQuery]);
+
   const toggleTheme = () => setIsLight((prev) => !prev);
 
   const onLogout = () => {
@@ -98,11 +62,23 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const handleSearchInputChange = (val) => {
+    setNavSearch(val);
+    const pathname = window.location.pathname;
+    const isSearchablePage = pathname === "/" || pathname === "/directory";
+    if (isSearchablePage) {
+      if (val.trim()) {
+        setSearchParams({ q: val }, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
+    }
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (navSearch.trim()) {
       navigate(`/directory?q=${encodeURIComponent(navSearch.trim())}`);
-      setNavSearch("");
     } else {
       navigate("/directory");
     }
@@ -115,24 +91,23 @@ export default function Navbar() {
     >
       <div className="w-full flex h-16 items-center justify-between px-2 sm:px-4">
         <div className="flex items-center gap-6 md:gap-8">
-          <Link to="/" data-testid="brand-logo" className="flex items-center gap-2">
-            <SpeechBubbleLogo className="h-10 w-10 sm:h-11 sm:w-11 animate-flip-2min drop-shadow" />
-            <span className="inline-block font-display text-xl font-black tracking-tighter animate-flip-2min">
+          <Link to="/" data-testid="brand-logo" className="flex items-center gap-1.5 sm:gap-2">
+            <SpeechBubbleLogo className="h-8 w-8 sm:h-11 sm:w-11 animate-flip-2min drop-shadow shrink-0" />
+            <span className="hidden min-[400px]:inline-block font-display text-lg sm:text-xl font-black tracking-tighter animate-flip-2min">
               SPARKZ<span className="text-[#e5ff00]">.TV</span>
             </span>
           </Link>
-
         </div>
 
         {/* Global Nav Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center relative max-w-xs flex-1 mx-4">
-          <Search className="absolute left-3 h-3.5 w-3.5 text-zinc-500" />
+        <form onSubmit={handleSearchSubmit} className="flex items-center relative max-w-[140px] xs:max-w-[180px] sm:max-w-xs flex-1 mx-2 sm:mx-4">
+          <Search className="absolute left-2.5 sm:left-3 h-3.5 w-3.5 text-zinc-500" />
           <input
             type="text"
             value={navSearch}
-            onChange={(e) => setNavSearch(e.target.value)}
-            placeholder="Search DJs, genres, channels..."
-            className="w-full border border-[#27272a] bg-black py-1.5 pl-9 pr-3 font-mono text-xs text-white placeholder-zinc-500 focus:border-[#e5ff00] focus:outline-none transition-colors"
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            placeholder="Search selectors..."
+            className="w-full border border-[#27272a] bg-black py-1 sm:py-1.5 pl-8 sm:pl-9 pr-2.5 font-mono text-[11px] sm:text-xs text-white placeholder-zinc-500 focus:border-[#e5ff00] focus:outline-none transition-colors"
             data-testid="navbar-search-input"
           />
         </form>
@@ -228,7 +203,7 @@ export default function Navbar() {
                       BROWSE
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
+                   <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
                     <Link
                       to="/directory"
                       data-testid="nav-directory"
@@ -236,6 +211,15 @@ export default function Navbar() {
                     >
                       DIRECTORY
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
+                    <a
+                      href="/#featured-djs"
+                      data-testid="nav-featured-djs"
+                      className="flex cursor-pointer items-center gap-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-zinc-200 hover:bg-[#0f0f0f] focus:bg-[#0f0f0f] focus:text-white"
+                    >
+                      FEATURED DJS
+                    </a>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
                     <Link
@@ -364,6 +348,16 @@ function UserMenu({ user, onLogout }) {
         >
           DIRECTORY
         </MenuLink>
+        <DropdownMenuItem asChild style={{ borderRadius: 0 }}>
+          <a
+            href="/#featured-djs"
+            data-testid="user-menu-featured-djs"
+            className="flex cursor-pointer items-center gap-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-zinc-200 hover:bg-[#0f0f0f] focus:bg-[#0f0f0f] focus:text-white"
+          >
+            <Star className="h-3.5 w-3.5" />
+            FEATURED DJS
+          </a>
+        </DropdownMenuItem>
         <MenuLink
           to="/lounge"
           icon={<MessageSquare className="h-3.5 w-3.5" />}

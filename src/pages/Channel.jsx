@@ -15,7 +15,7 @@ import LiveDuration from "@/components/LiveDuration";
 import UserLocationTime from "@/components/UserLocationTime";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/lib/auth-context";
-import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X } from "lucide-react";
+import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe } from "lucide-react";
 import { useLivepeerAutoPoll } from "@/hooks/useLivepeerAutoPoll";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -523,6 +523,63 @@ export default function Channel() {
                       </Link>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* BIO & SOCIAL LINKS ROW */}
+              {(channel.bio || (channel.socials && Object.values(channel.socials).some(Boolean))) && (
+                <div className="mt-2.5 pt-2.5 border-t border-[#27272a]/30 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  {/* Bio block */}
+                  {channel.bio && (
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1">// BIO</div>
+                      <p className="font-mono text-xs text-zinc-300 leading-relaxed max-w-3xl whitespace-pre-wrap">
+                        {channel.bio}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Social Links block */}
+                  {channel.socials && Object.values(channel.socials).some(Boolean) && (
+                    <div className="flex flex-col gap-1 min-w-[160px] md:text-right">
+                      <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1 md:text-right">// LINKS</div>
+                      <div className="flex flex-wrap md:flex-col gap-x-3 gap-y-1 justify-start md:items-end font-mono text-[10px]">
+                        {channel.socials.soundcloud && (
+                          <a
+                            href={channel.socials.soundcloud.startsWith("http") ? channel.socials.soundcloud : `https://${channel.socials.soundcloud}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                          >
+                            <span>SOUNDCLOUD</span>
+                            <Globe className="h-3 w-3" />
+                          </a>
+                        )}
+                        {channel.socials.mixcloud && (
+                          <a
+                            href={channel.socials.mixcloud.startsWith("http") ? channel.socials.mixcloud : `https://${channel.socials.mixcloud}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                          >
+                            <span>MIXCLOUD</span>
+                            <Globe className="h-3 w-3" />
+                          </a>
+                        )}
+                        {channel.socials.instagram && (
+                          <a
+                            href={channel.socials.instagram.startsWith("http") ? channel.socials.instagram : `https://${channel.socials.instagram}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                          >
+                            <span>INSTAGRAM</span>
+                            <Instagram className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

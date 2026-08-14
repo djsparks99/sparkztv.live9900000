@@ -1,20 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { api, fileUrl, apiErrorMessage, fileToBase64, compressAndResizeImage, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { updateUserProfileInFirestore } from "@/lib/firebase";
+import { updateUserProfileInFirestore, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { Upload, User, Copy, RefreshCw, Radio, Eye, EyeOff } from "lucide-react";
+import { Upload, User, Copy, RefreshCw, Radio, Eye, EyeOff, Music, Globe, Link2 } from "lucide-react";
 
 export default function Profile() {
   const { user, setUser, refresh } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
+  const [genre, setGenre] = useState("");
+  const [location, setLocation] = useState("");
+  const [scLink, setScLink] = useState("");
+  const [mcLink, setMcLink] = useState("");
+  const [spLink, setSpLink] = useState("");
+  const [igLink, setIgLink] = useState("");
+  const [ytLink, setYtLink] = useState("");
+  const [twLink, setTwLink] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingSocial, setUploadingSocial] = useState(false);
   const [channel, setChannel] = useState(null);
   const [revealKey, setRevealKey] = useState(false);
   const [loadingStream, setLoadingStream] = useState(false);
+  const [activeTab, setActiveTab] = useState("identity");
   const fileRef = useRef(null);
   const socialFileRef = useRef(null);
 
@@ -22,6 +32,26 @@ export default function Profile() {
     if (user) {
       setDisplayName(user.display_name || "");
       setBio(user.bio || "");
+
+      // Load additional metadata from Firestore
+      getDoc(doc(db, "users", user.uid))
+        .then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.genre) setGenre(data.genre);
+            if (data.location) setLocation(data.location);
+            if (data.socials) {
+              setScLink(data.socials.soundcloud || "");
+              setMcLink(data.socials.mixcloud || "");
+              setSpLink(data.socials.spotify || "");
+              setIgLink(data.socials.instagram || "");
+              setYtLink(data.socials.youtube || "");
+              setTwLink(data.socials.twitter || "");
+            }
+          }
+        })
+        .catch((err) => console.warn("Error fetching user profile metadata:", err));
+
       api.get("/channels/mine", {
         params: {
           uid: user.uid,
@@ -58,6 +88,21 @@ export default function Profile() {
         bio,
       };
 
+      const firestorePayload = {
+        display_name: displayName,
+        bio,
+        genre,
+        location,
+        socials: {
+          soundcloud: scLink,
+          mixcloud: mcLink,
+          spotify: spLink,
+          instagram: igLink,
+          youtube: ytLink,
+          twitter: twLink,
+        }
+      };
+
       let updatedData = null;
       try {
         const { data } = await api.patch("/users/me", payload);
@@ -73,13 +118,13 @@ export default function Profile() {
       }
 
       if (user?.uid) {
-        updateUserProfileInFirestore(user.uid, payload).catch(() => {});
+        updateUserProfileInFirestore(user.uid, firestorePayload, user.username).catch(() => {});
       }
 
       if (updatedData) {
-        setUser((prev) => (prev ? { ...prev, ...updatedData } : updatedData));
+        setUser((prev) => (prev ? { ...prev, ...updatedData, genre, location, socials: firestorePayload.socials } : { ...updatedData, genre, location, socials: firestorePayload.socials }));
       } else {
-        setUser((prev) => (prev ? { ...prev, display_name: displayName, bio } : { display_name: displayName, bio }));
+        setUser((prev) => (prev ? { ...prev, display_name: displayName, bio, genre, location, socials: firestorePayload.socials } : { display_name: displayName, bio, genre, location, socials: firestorePayload.socials }));
       }
 
       toast.success("Profile updated successfully!");
@@ -193,268 +238,312 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pt-12 pb-24 sm:pb-28 lg:pb-32" data-testid="profile-page">
-      <div className="label-caps">// PROFILE</div>
-      <h1 className="mb-8 font-display text-4xl font-black tracking-tighter sm:text-5xl">
-        EDIT YOUR SIGNATURE
+    <div className="mx-auto max-w-5xl px-6 pt-12 pb-24 sm:pb-28 lg:pb-32" data-testid="profile-page">
+      <div className="label-caps">// USER DASHBOARD</div>
+      <h1 className="mb-2 font-display text-4xl font-black tracking-tighter sm:text-5xl">
+        PROFILE SETTINGS
       </h1>
+      <p className="mb-8 font-mono text-xs text-zinc-500 uppercase tracking-wider">
+        Customize your DJ signature, streaming parameters, and social links in one view.
+      </p>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
-            <div className="label-caps">// AVATAR</div>
-            <div className="mt-4 flex flex-col items-center">
-              <img
-                src={user.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
-                alt=""
-                className="h-40 w-40 border border-[#27272a] object-cover bg-black"
-                data-testid="profile-avatar"
-              />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={onFile}
-                className="hidden"
-                data-testid="profile-photo-input"
-              />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                data-testid="profile-photo-upload"
-                className="btn-primary mt-6 inline-flex w-full items-center justify-center gap-2"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                {uploading ? "UPLOADING..." : "UPLOAD PHOTO"}
-              </button>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
-                JPG / PNG / WEBP — MAX 5MB
-              </p>
-            </div>
-          </div>
+      {/* COMPACT TAB NAVIGATION */}
+      <div className="mb-8 flex flex-col sm:flex-row border border-[#27272a] bg-[#0c0c0e] p-1.5 font-mono text-[11px] tracking-widest uppercase">
+        <button
+          onClick={() => setActiveTab("identity")}
+          className={`flex items-center justify-center gap-2 px-6 py-3.5 transition-all duration-150 ${
+            activeTab === "identity"
+              ? "bg-[#e5ff00] text-black font-extrabold"
+              : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+          }`}
+        >
+          <User className="h-3.5 w-3.5" />
+          [1] IDENTITY & AVATAR
+        </button>
+        <button
+          onClick={() => setActiveTab("stream_settings")}
+          className={`flex items-center justify-center gap-2 px-6 py-3.5 transition-all duration-150 ${
+            activeTab === "stream_settings"
+              ? "bg-[#e5ff00] text-black font-extrabold"
+              : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+          }`}
+        >
+          <Radio className="h-3.5 w-3.5" />
+          [2] STREAM CREDENTIALS
+        </button>
+      </div>
 
-          {/* Social Share Preview (Open Graph) */}
-          <div className="mt-6 border border-[#27272a] bg-[#0a0a0a] p-6" data-testid="profile-social-share-section">
-            <div className="label-caps">// SOCIAL SHARE PREVIEW</div>
-            <div className="mt-4 flex flex-col items-center">
-              {user.social_share_image_url ? (
+      {/* RENDER ACTIVE TAB */}
+      {activeTab === "identity" && (
+        <div className="grid gap-6 lg:grid-cols-3 animate-fadeIn">
+          {/* Sidebar Area: Avatar and OG */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* AVATAR */}
+            <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
+              <div className="label-caps">// AVATAR IMAGE</div>
+              <div className="mt-4 flex flex-col items-center">
                 <img
-                  src={fileUrl(user.social_share_image_url)}
-                  alt="Social Share"
-                  className="aspect-[1.91/1] w-full border border-[#27272a] object-cover"
-                  data-testid="profile-social-share-preview"
+                  src={user.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
+                  alt=""
+                  className="h-40 w-40 border border-[#27272a] object-cover bg-black"
+                  data-testid="profile-avatar"
                 />
-              ) : user.photo_url ? (
-                <div className="relative aspect-[1.91/1] w-full border border-[#27272a] bg-black flex flex-col items-center justify-center p-4 text-center">
-                  <img
-                    src={fileUrl(user.photo_url)}
-                    alt="Fallback Avatar"
-                    className="h-16 w-16 border border-[#27272a] object-cover mb-2 opacity-50"
-                  />
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">
-                    FALLBACK: STANDARD AVATAR
-                  </span>
-                </div>
-              ) : (
-                <div className="relative aspect-[1.91/1] w-full border border-[#27272a] bg-black flex flex-col items-center justify-center p-4 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center border border-[#27272a] bg-black rounded-full mb-2 opacity-50">
-                    <User className="h-6 w-6 text-zinc-700" />
-                  </div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">
-                    FALLBACK: DEFAULT BRAND OG IMAGE
-                  </span>
-                </div>
-              )}
-
-              <input
-                ref={socialFileRef}
-                type="file"
-                accept="image/*"
-                onChange={onSocialFile}
-                className="hidden"
-                data-testid="profile-social-share-input"
-              />
-              <div className="mt-6 flex w-full flex-col gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onFile}
+                  className="hidden"
+                  data-testid="profile-photo-input"
+                />
                 <button
-                  onClick={() => socialFileRef.current?.click()}
-                  disabled={uploadingSocial}
-                  data-testid="profile-social-share-upload"
-                  className="btn-primary inline-flex items-center justify-center gap-2"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  data-testid="profile-photo-upload"
+                  className="btn-primary mt-6 inline-flex w-full items-center justify-center gap-2 text-xs py-2.5"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  {uploadingSocial ? "UPLOADING..." : "UPLOAD PREVIEW"}
+                  {uploading ? "UPLOADING..." : "UPLOAD PHOTO"}
                 </button>
-                {user.social_share_image_url && (
-                  <button
-                    onClick={resetSocialFile}
-                    disabled={uploadingSocial}
-                    data-testid="profile-social-share-reset"
-                    className="btn-ghost inline-flex items-center justify-center gap-2 text-xs border border-zinc-800 text-zinc-400 hover:text-white"
-                  >
-                    RESET TO DEFAULT
-                  </button>
-                )}
-              </div>
-              <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest text-zinc-500 leading-normal">
-                RECOMMENDED: 1200 × 630 PNG/JPG
-                <br />
-                FOR FACEBOOK / TWITTER CARDS
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2">
-          <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
-            <div className="label-caps">// IDENTITY</div>
-            <div className="mt-4 space-y-5">
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="label-caps" htmlFor="username">USERNAME (PERMANENT HANDLE)</label>
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00]">
-                    🔒 FIRESTORE LOCKED
-                  </span>
-                </div>
-                <input
-                  id="username"
-                  className="input-terminal opacity-70 bg-[#050505] text-[#e5ff00] cursor-not-allowed"
-                  value={user.username}
-                  readOnly
-                />
-                <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
-                  Permanent Firestore handle locked on sign-up. Cannot be reset or reverted.
+                <p className="mt-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+                  JPG / PNG / WEBP — MAX 5MB
                 </p>
               </div>
-              <div>
-                <label className="label-caps" htmlFor="email-ro">EMAIL</label>
+            </div>
+
+            {/* Social Share Preview (Open Graph) */}
+            <div className="border border-[#27272a] bg-[#0a0a0a] p-6" data-testid="profile-social-share-section">
+              <div className="label-caps">// OG SOCIAL PREVIEW</div>
+              <div className="mt-4 flex flex-col items-center">
+                {user.social_share_image_url ? (
+                  <img
+                    src={fileUrl(user.social_share_image_url)}
+                    alt="Social Share"
+                    className="aspect-[1.91/1] w-full border border-[#27272a] object-cover"
+                    data-testid="profile-social-share-preview"
+                  />
+                ) : user.photo_url ? (
+                  <div className="relative aspect-[1.91/1] w-full border border-[#27272a] bg-black flex flex-col items-center justify-center p-4 text-center">
+                    <img
+                      src={fileUrl(user.photo_url)}
+                      alt="Fallback Avatar"
+                      className="h-16 w-16 border border-[#27272a] object-cover mb-2 opacity-50"
+                    />
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+                      FALLBACK: STANDARD AVATAR
+                    </span>
+                  </div>
+                ) : (
+                  <div className="relative aspect-[1.91/1] w-full border border-[#27272a] bg-black flex flex-col items-center justify-center p-4 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center border border-[#27272a] bg-black rounded-full mb-2 opacity-50">
+                      <User className="h-6 w-6 text-zinc-700" />
+                    </div>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+                      FALLBACK: DEFAULT OG IMAGE
+                    </span>
+                  </div>
+                )}
+
                 <input
-                  id="email-ro"
-                  className="input-terminal opacity-60"
-                  value={user.email}
-                  readOnly
+                  ref={socialFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onSocialFile}
+                  className="hidden"
+                  data-testid="profile-social-share-input"
                 />
+                <div className="mt-6 flex w-full flex-col gap-2">
+                  <button
+                    onClick={() => socialFileRef.current?.click()}
+                    disabled={uploadingSocial}
+                    data-testid="profile-social-share-upload"
+                    className="btn-primary inline-flex items-center justify-center gap-2 text-xs py-2.5"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploadingSocial ? "UPLOADING..." : "UPLOAD PREVIEW"}
+                  </button>
+                  {user.social_share_image_url && (
+                    <button
+                      onClick={resetSocialFile}
+                      disabled={uploadingSocial}
+                      data-testid="profile-social-share-reset"
+                      className="btn-ghost inline-flex items-center justify-center gap-2 text-xs border border-zinc-800 text-zinc-400 hover:text-white py-1.5"
+                    >
+                      RESET TO DEFAULT
+                    </button>
+                  )}
+                </div>
+                <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest text-zinc-500 leading-normal">
+                  RECOMMENDED: 1200 × 630 PNG/JPG
+                </p>
               </div>
-              <div>
-                <label className="label-caps" htmlFor="display-name">DISPLAY NAME</label>
-                <input
-                  id="display-name"
-                  data-testid="profile-display-name"
-                  className="input-terminal"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  maxLength={48}
-                />
-              </div>
-              <div>
-                <label className="label-caps" htmlFor="bio">BIO</label>
-                <textarea
-                  id="bio"
-                  data-testid="profile-bio"
-                  className="input-terminal min-h-[120px] resize-y"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  maxLength={280}
-                  placeholder="Selectors, tracks, tell 'em what you're about."
-                />
-              </div>
-              <button
-                onClick={save}
-                disabled={saving}
-                data-testid="profile-save"
-                className="btn-primary"
-              >
-                {saving ? "SAVING..." : "SAVE PROFILE"}
-              </button>
             </div>
           </div>
 
-          {/* Stream & Broadcast credentials */}
-          <div className="mt-6 border border-[#27272a] bg-[#0a0a0a] p-6" data-testid="profile-stream-settings">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="label-caps">// BROADCAST & STREAM KEY (AMAZON IVS)</div>
-              <button
-                onClick={generateNewStreamKey}
-                disabled={loadingStream}
-                data-testid="generate-stream-key-btn"
-                className="btn-ghost inline-flex items-center gap-1.5 text-xs text-[#e5ff00]"
-              >
-                <RefreshCw className={`h-3 w-3 ${loadingStream ? "animate-spin" : ""}`} />
-                {loadingStream ? "GENERATING..." : "REGENERATE KEY"}
-              </button>
-            </div>
-
-            {channel ? (
-              <div className="space-y-4">
+          {/* Form Area: Identity */}
+          <div className="lg:col-span-2">
+            <div className="border border-[#27272a] bg-[#0a0a0a] p-6 h-full flex flex-col justify-between">
+              <div className="space-y-5">
+                <div className="label-caps">// IDENTITY CONFIG</div>
                 <div>
-                  <div className="mb-1 label-caps">RTMP SERVER</div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2 font-mono text-[11px] text-zinc-200">
-                      {channel.rtmp_url || channel.rtmpUrl || "rtmps://global-ingest.live-video.net:443/app/"}
-                    </code>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(channel.rtmp_url || channel.rtmpUrl || "rtmps://global-ingest.live-video.net:443/app/");
-                        toast.success("RTMP Server copied!");
-                      }}
-                      className="btn-ghost"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
+                  <div className="flex items-center justify-between">
+                    <label className="label-caps" htmlFor="username">USERNAME (PERMANENT HANDLE)</label>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00]">
+                      🔒 FIRESTORE LOCKED
+                    </span>
                   </div>
+                  <input
+                    id="username"
+                    className="input-terminal opacity-70 bg-[#050505] text-[#e5ff00] cursor-not-allowed"
+                    value={user.username}
+                    readOnly
+                  />
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                    Permanent handle locked on sign-up. Cannot be reset or reverted.
+                  </p>
                 </div>
-
                 <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="label-caps">STREAM KEY</span>
-                    <button
-                      onClick={() => setRevealKey(!revealKey)}
-                      className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 hover:text-[#e5ff00]"
-                    >
-                      {revealKey ? "HIDE" : "REVEAL"}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2 font-mono text-[11px] text-zinc-200">
-                      {revealKey ? (channel.stream_key || channel.streamKey) : "•".repeat(Math.min((channel.stream_key || channel.streamKey || "").length || 16, 24))}
-                    </code>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(channel.stream_key || channel.streamKey || "");
-                        toast.success("Stream Key copied!");
-                      }}
-                      className="btn-ghost"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  <label className="label-caps" htmlFor="email-ro">EMAIL</label>
+                  <input
+                    id="email-ro"
+                    className="input-terminal opacity-60"
+                    value={user.email}
+                    readOnly
+                  />
                 </div>
-
                 <div>
-                  <div className="mb-1 label-caps">PLAYBACK URL</div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2 font-mono text-[11px] text-zinc-300">
-                      {channel.playback_url || channel.playbackUrl || channel.playback_id || "None"}
-                    </code>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(channel.playback_url || channel.playbackUrl || channel.playback_id || "");
-                        toast.success("Playback URL copied!");
-                      }}
-                      className="btn-ghost"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  <label className="label-caps" htmlFor="display-name">DISPLAY NAME</label>
+                  <input
+                    id="display-name"
+                    data-testid="profile-display-name"
+                    className="input-terminal"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    maxLength={48}
+                  />
+                </div>
+                <div>
+                  <label className="label-caps" htmlFor="bio">BIO</label>
+                  <textarea
+                    id="bio"
+                    data-testid="profile-bio"
+                    className="input-terminal min-h-[140px] resize-y"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    maxLength={280}
+                    placeholder="Selectors, tracks, tell 'em what you're about."
+                  />
                 </div>
               </div>
-            ) : (
-              <p className="font-mono text-xs text-zinc-500">
-                Loading stream details or no channel created yet...
-              </p>
-            )}
+
+              <div className="mt-8 pt-6 border-t border-[#1a1a20]">
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  data-testid="profile-save"
+                  className="btn-primary w-full md:w-auto"
+                >
+                  {saving ? "SAVING..." : "SAVE PROFILE"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+
+
+      {activeTab === "stream_settings" && (
+        <div className="border border-[#27272a] bg-[#0a0a0a] p-6 animate-fadeIn max-w-4xl" data-testid="profile-stream-settings">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="label-caps">// BROADCAST & STREAM KEY (AMAZON IVS)</div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-1">
+                Configure your encoder (OBS / Streamlabs) to stream live to SparkzTV.
+              </p>
+            </div>
+            <button
+              onClick={generateNewStreamKey}
+              disabled={loadingStream}
+              data-testid="generate-stream-key-btn"
+              className="btn-ghost inline-flex items-center gap-1.5 text-xs text-[#e5ff00] border border-zinc-800 px-3 py-1.5 self-start md:self-auto hover:bg-zinc-900"
+            >
+              <RefreshCw className={`h-3 w-3 ${loadingStream ? "animate-spin" : ""}`} />
+              {loadingStream ? "GENERATING..." : "REGENERATE KEY"}
+            </button>
+          </div>
+
+          {channel ? (
+            <div className="space-y-4 mt-6">
+              <div>
+                <div className="mb-1 label-caps">RTMP SERVER</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2.5 font-mono text-[11px] text-zinc-200">
+                    {channel.rtmp_url || channel.rtmpUrl || "rtmps://global-ingest.live-video.net:443/app/"}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(channel.rtmp_url || channel.rtmpUrl || "rtmps://global-ingest.live-video.net:443/app/");
+                      toast.success("RTMP Server copied!");
+                    }}
+                    className="btn-ghost border border-zinc-800 p-2.5 hover:bg-zinc-900"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="label-caps">STREAM KEY</span>
+                  <button
+                    onClick={() => setRevealKey(!revealKey)}
+                    className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 hover:text-[#e5ff00]"
+                  >
+                    {revealKey ? "HIDE" : "REVEAL"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2.5 font-mono text-[11px] text-zinc-200">
+                    {revealKey ? (channel.stream_key || channel.streamKey) : "•".repeat(Math.min((channel.stream_key || channel.streamKey || "").length || 16, 24))}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(channel.stream_key || channel.streamKey || "");
+                      toast.success("Stream Key copied!");
+                    }}
+                    className="btn-ghost border border-zinc-800 p-2.5 hover:bg-zinc-900"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 label-caps">PLAYBACK URL</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto whitespace-nowrap border border-[#27272a] bg-black px-3 py-2.5 font-mono text-[11px] text-zinc-300">
+                    {channel.playback_url || channel.playbackUrl || channel.playback_id || "None"}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(channel.playback_url || channel.playbackUrl || channel.playback_id || "");
+                      toast.success("Playback URL copied!");
+                    }}
+                    className="btn-ghost border border-zinc-800 p-2.5 hover:bg-zinc-900"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="font-mono text-xs text-zinc-500 mt-6">
+              Loading stream details or no channel created yet...
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

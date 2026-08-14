@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
@@ -7,6 +7,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import ChannelCard from "@/components/ChannelCard";
 import Marquee from "@/components/Marquee";
 import StreamCarousel from "@/components/StreamCarousel";
+import FeaturedDJProfiles from "@/components/FeaturedDJProfiles";
 import ChatPanel from "@/components/ChatPanel";
 import SEO from "@/components/SEO";
 import { ArrowRight, Radio, Zap, Heart } from "lucide-react";
@@ -27,6 +28,8 @@ const CATEGORIES = [
 ];
 
 export default function Browse() {
+  const [searchParams] = useSearchParams();
+  const q = searchParams.get("q") || "";
   const { user } = useAuth();
   const hasLoadedOnceRef = useRef(false);
   const [category, setCategory] = useState(null);
@@ -250,6 +253,17 @@ export default function Browse() {
   const stableChannels = useStableLiveChannels(rawChannels);
 
   let filteredChannels = stableChannels;
+  if (q.trim()) {
+    const qLower = q.toLowerCase().trim();
+    filteredChannels = filteredChannels.filter((c) => {
+      return (
+        (c.display_name || c.username || "").toLowerCase().includes(qLower) ||
+        (c.stream_title || "").toLowerCase().includes(qLower) ||
+        (c.category || "").toLowerCase().includes(qLower) ||
+        (c.bio || "").toLowerCase().includes(qLower)
+      );
+    });
+  }
   if (followingOnly) {
     filteredChannels = filteredChannels.filter((c) =>
       followingList.includes((c.username || "").toLowerCase())
@@ -400,6 +414,9 @@ export default function Browse() {
         )}
         </div>
       </section>
+
+      {/* Featured DJ Profiles Section with Firestore Follow Integration */}
+      <FeaturedDJProfiles />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   updateDoc,
   collection,
   query,
@@ -125,21 +126,99 @@ export async function updateUserProfileInFirestore(uid, updates, username = null
     if (updates.display_name !== undefined) channelUpdates.display_name = updates.display_name;
     if (updates.photo_url !== undefined) channelUpdates.photo_url = updates.photo_url;
     if (updates.thumbnail_url !== undefined) channelUpdates.thumbnail_url = updates.thumbnail_url;
+    if (updates.bio !== undefined) channelUpdates.bio = updates.bio;
+    if (updates.genre !== undefined) channelUpdates.genre = updates.genre;
+    if (updates.location !== undefined) channelUpdates.location = updates.location;
+    if (updates.socials !== undefined) channelUpdates.socials = updates.socials;
+
+    // Ensure username and channel_id are always populated in the channel document
+    let resolvedUsername = username;
+    if (!resolvedUsername) {
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && userSnap.data()?.username) {
+        resolvedUsername = userSnap.data().username;
+      }
+    }
+
+    if (resolvedUsername) {
+      channelUpdates.username = resolvedUsername;
+      channelUpdates.channel_id = resolvedUsername.toLowerCase();
+    }
 
     if (Object.keys(channelUpdates).length > 0) {
       await setDoc(doc(db, "channels", uid), channelUpdates, { merge: true });
-      if (username) {
-        await setDoc(doc(db, "channels", username.toLowerCase()), channelUpdates, { merge: true });
-      } else {
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists() && userSnap.data()?.username) {
-          const uname = String(userSnap.data().username).toLowerCase();
-          await setDoc(doc(db, "channels", uname), channelUpdates, { merge: true });
-        }
+      if (resolvedUsername) {
+        await setDoc(doc(db, "channels", resolvedUsername.toLowerCase()), channelUpdates, { merge: true });
       }
     }
   } catch (err) {
     console.warn("Client Firestore user profile update warning:", err);
+  }
+}
+
+export function handleFirestoreError(error, operationType, path) {
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  return errInfo;
+}
+
+export async function followDJInFirestore(user, djUsername, djDisplayName = "") {
+  if (!user || !user.uid || !djUsername) {
+    throw new Error("Authentication and valid DJ username required to follow.");
+  }
+  const cleanDj = String(djUsername).toLowerCase().trim();
+  const followId = `${user.uid}_${cleanDj}`;
+  const path = `follows/${followId}`;
+
+  try {
+    const followRef = doc(db, "follows", followId);
+    const payload = {
+      id: followId,
+      user_uid: user.uid,
+      follower_username: user.username || user.email?.split("@")[0] || "user",
+      follower_display_name: user.display_name || user.username || "User",
+      dj_username: cleanDj,
+      dj_display_name: djDisplayName || djUsername,
+      created_at: new Date().toISOString(),
+    };
+    await setDoc(followRef, payload, { merge: true });
+    return { success: true, isFollowing: true, followId };
+  } catch (err) {
+    handleFirestoreError(err, "create", path);
+    throw err;
+  }
+}
+
+export async function unfollowDJInFirestore(user, djUsername) {
+  if (!user || !user.uid || !djUsername) {
+    throw new Error("Authentication and valid DJ username required to unfollow.");
+  }
+  const cleanDj = String(djUsername).toLowerCase().trim();
+  const followId = `${user.uid}_${cleanDj}`;
+  const path = `follows/${followId}`;
+
+  try {
+    const followRef = doc(db, "follows", followId);
+    await deleteDoc(followRef);
+    return { success: true, isFollowing: false, followId };
+  } catch (err) {
+    handleFirestoreError(err, "delete", path);
+    throw err;
   }
 }
 

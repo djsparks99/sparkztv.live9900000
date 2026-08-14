@@ -1,31 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Yellow Speech Bubble Body with tail -->
-  <path d="M 20 25 
-           A 12 12 0 0 1 32 13 
-           L 68 13 
-           A 12 12 0 0 1 80 25 
-           L 80 65 
-           A 12 12 0 0 1 68 77 
-           L 38 77 
-           L 24 88 
-           C 22 89.5, 20 88, 20 85 
-           L 20 77 
-           A 12 12 0 0 1 20 25 Z" 
-        fill="#e2ff3b" 
-        stroke="#0d0d0d" 
-        stroke-width="5" 
-        stroke-linejoin="round" 
-        stroke-linecap="round"/>
-  
-  <!-- Left Eye -->
-  <circle cx="38" cy="46" r="8" fill="#0d0d0d"/>
-  <!-- Left Eye Highlights -->
-  <circle cx="36" cy="43" r="2.5" fill="#ffffff"/>
-  <circle cx="41" cy="49" r="1.2" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Definitions for gradients and filters -->
+  <defs>
+    <!-- Vibrant Neon Yellow-Green Gradient matching the uploaded logo exactly -->
+    <linearGradient id="bubbleBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#efff0a" />
+      <stop offset="50%" stop-color="#dbfc01" />
+      <stop offset="100%" stop-color="#c1eb00" />
+    </linearGradient>
+    
+    <!-- Subtle drop shadow for the inner eyes -->
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.15" />
+    </filter>
+  </defs>
 
-  <!-- Right Eye -->
-  <circle cx="62" cy="46" r="8" fill="#0d0d0d"/>
-  <!-- Right Eye Highlights -->
-  <circle cx="60" cy="43" r="2.5" fill="#ffffff"/>
-  <circle cx="65" cy="49" r="1.2" fill="#ffffff"/>
+  <!-- Group with crisp rendering -->
+  <g shape-rendering="geometricPrecision">
+    <!-- LAYER 1: Thick Outer Dark Outline (Perfect Silhouette) -->
+    <path d="M 185 160
+             H 327
+             A 24 24 0 0 1 351 184
+             V 316
+             A 24 24 0 0 1 327 340
+             H 215
+             C 190 340, 162 355, 148 375
+             C 154 355, 161 335, 161 325
+             V 184
+             A 24 24 0 0 1 185 160 Z"
+          fill="#111524"
+          stroke="#111524"
+          stroke-width="16"
+          stroke-linejoin="round"
+          stroke-linecap="round" />
+
+    <!-- LAYER 2: Main Neon Yellow-Green Fill (Inner Shape) -->
+    <path d="M 185 160
+             H 327
+             A 24 24 0 0 1 351 184
+             V 316
+             A 24 24 0 0 1 327 340
+             H 215
+             C 190 340, 162 355, 148 375
+             C 154 355, 161 335, 161 325
+             V 184
+             A 24 24 0 0 1 185 160 Z"
+          fill="url(#bubbleBodyGrad)" />
+
+    <!-- LAYER 3: White Glossy Inner Bevel Highlight (Matching the gorgeous plastic sticker look) -->
+    <path d="M 185 172
+             H 327
+             A 12 12 0 0 1 339 184"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="5"
+          stroke-linecap="round"
+          opacity="0.65" />
+
+    <!-- LAYER 4: Kawaii Cartoon Eyes -->
+    <!-- Left Eye Group -->
+    <g filter="url(#softShadow)">
+      <!-- Left Pupil -->
+      <circle cx="216" cy="245" r="26" fill="#111524" />
+      <!-- Left Top-Left Highlight -->
+      <circle cx="206" cy="235" r="8" fill="#ffffff" />
+      <!-- Left Bottom-Right Highlight -->
+      <circle cx="226" cy="255" r="4.5" fill="#ffffff" />
+    </g>
+
+    <!-- Right Eye Group -->
+    <g filter="url(#softShadow)">
+      <!-- Right Pupil -->
+      <circle cx="296" cy="245" r="26" fill="#111524" />
+      <!-- Right Top-Left Highlight -->
+      <circle cx="286" cy="235" r="8" fill="#ffffff" />
+      <!-- Right Bottom-Right Highlight -->
+      <circle cx="306" cy="255" r="4.5" fill="#ffffff" />
+    </g>
+  </g>
 </svg>

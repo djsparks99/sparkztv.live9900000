@@ -201,6 +201,40 @@
         "status": { "type": "string", "required": true },
         "created_at": { "type": "string", "required": true }
       }
+    },
+    "follows": {
+      "path": "follows/{followId}",
+      "description": "User DJ follows relationships stored in Firestore",
+      "allow": {
+        "read": "true",
+        "create": "request.auth != null",
+        "update": "false",
+        "delete": "request.auth != null"
+      },
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "user_uid": { "type": "string", "required": true },
+        "follower_username": { "type": "string", "required": true },
+        "dj_username": { "type": "string", "required": true },
+        "dj_display_name": { "type": "string", "required": false },
+        "created_at": { "type": "string", "required": true }
+      }
+    },
+    "viewer_history": {
+      "path": "viewer_history/{metricId}",
+      "description": "Historical live stream viewer counts over time",
+      "allow": {
+        "read": "true",
+        "create": "request.auth != null",
+        "update": "false",
+        "delete": "false"
+      },
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "username": { "type": "string", "required": true },
+        "viewer_count": { "type": "number", "required": true },
+        "created_at": { "type": "string", "required": true }
+      }
     }
   }
 }

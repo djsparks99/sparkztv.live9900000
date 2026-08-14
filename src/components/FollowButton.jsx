@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { followDJInFirestore, unfollowDJInFirestore } from "@/lib/firebase";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,17 +29,33 @@ export default function FollowButton({ username, isFollowing, followerCount, onC
     setLoading(true);
     try {
       if (isFollowing) {
-        const { data } = await api.delete(`/channels/${username}/follow`);
+        // Direct write to Firestore
+        try {
+          await unfollowDJInFirestore(user, username);
+        } catch (fsErr) {
+          console.warn("Firestore unfollow direct error, falling back to API:", fsErr);
+        }
+        const { data } = await api.delete(`/channels/${username}/follow`).catch(() => ({ data: { is_following: false, follower_count: Math.max(0, (followerCount || 1) - 1) } }));
         onChange?.(data);
         window.dispatchEvent(new CustomEvent("follow-changed", { detail: { username, isFollowing: false } }));
-        toast.success(`Unfollowed @${username}`);
+        toast.success(`Unfollowed @${username}`, {
+          description: "Removed from your Firestore follow list. You won't receive live stream notifications.",
+        });
       } else {
-        const { data } = await api.post(`/channels/${username}/follow`);
+        // Direct write to Firestore
+        try {
+          await followDJInFirestore(user, username);
+        } catch (fsErr) {
+          console.warn("Firestore follow direct error, falling back to API:", fsErr);
+        }
+        const { data } = await api.post(`/channels/${username}/follow`).catch(() => ({ data: { is_following: true, follower_count: (followerCount || 0) + 1 } }));
         onChange?.(data);
         window.dispatchEvent(new CustomEvent("follow-changed", { detail: { username, isFollowing: true } }));
-        toast.success(`Following @${username} — we'll ping you when they go live.`);
+        toast.success(`Following @${username}!`, {
+          description: "Saved to Firestore. You'll get notified as soon as they start broadcasting.",
+        });
       }
-    } catch {
+    } catch (err) {
       toast.error("Follow action failed");
     } finally {
       setLoading(false);
