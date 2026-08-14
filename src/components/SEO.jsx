@@ -23,8 +23,8 @@ export default function SEO({
   category,
   keywords,
 }) {
-  const defaultTitle = "SPARKZ.TV // High-Fidelity Underground Electronic Music Streams";
-  const defaultDesc = "Watch high-fidelity live audio and video streams from the world's best underground electronic music DJs. No censorship, 320kbps streams, and pure sound-system culture.";
+  const defaultTitle = "SPARKZ.TV - Live Drum and Bass, Jungle & Underground Radio";
+  const defaultDesc = "Discover the finest live drum and bass, old skool jungle, UK garage, and underground DJ sets on SPARKZ.TV. Watch high-fidelity 320kbps radio streams.";
   const defaultKeywords = "sparkztv, sparkz, sparkz.tv, underground electronic music, live DJ stream, drum and bass live, jungle music stream, dnb radio, pirate radio London, dubplate culture, UK garage live, dubstep livestream, sound system culture, selector, bass weight, independent music platform";
   const defaultImage = "/og-image.jpg";
 

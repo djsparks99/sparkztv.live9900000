@@ -123,23 +123,23 @@ export default function ChannelCard({ channel }) {
           </div>
         )}
       </div>
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex items-start gap-2.5 p-3">
         <img
           src={(resolvedAvatar && !imageError) ? resolvedAvatar : DEFAULT_AVATAR}
           alt=""
-          className="h-10 w-10 flex-shrink-0 border border-[#27272a] object-cover grayscale-0 md:grayscale md:group-hover:grayscale-0"
+          className="h-8 w-8 flex-shrink-0 border border-[#27272a] object-cover grayscale-0 md:grayscale md:group-hover:grayscale-0"
           referrerPolicy="no-referrer"
           onError={() => { if (resolvedAvatar && !imageError) setImageError(true); }}
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-display text-base font-bold leading-tight">
+          <div className="truncate font-display text-sm font-bold leading-tight">
             {channel.stream_title || "Untitled stream"}
           </div>
-          <div className="mt-1 truncate font-mono text-xs text-zinc-400">
+          <div className="mt-0.5 truncate font-mono text-[11px] text-zinc-400">
             @{channelSlug}
           </div>
-          <div className="mt-2">
-            <span className="chip">{channel.category}</span>
+          <div className="mt-1.5">
+            <span className="chip px-1.5 py-0.5 text-[9px]">{channel.category}</span>
           </div>
         </div>
       </div>

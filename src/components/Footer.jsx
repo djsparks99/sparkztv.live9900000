@@ -54,73 +54,72 @@ export default function Footer() {
   };
 
   return (
-    <footer className="mt-16 border-t border-[#27272a] bg-[#050505] text-zinc-400 pb-12 sm:pb-16">
-      <div className="mx-auto max-w-[1440px] px-6 py-10">
-        <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+    <footer className="mt-10 border-t border-[#27272a] bg-[#050505] text-zinc-400 pb-6 sm:pb-8">
+      <div className="mx-auto max-w-[1440px] px-6 py-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           
           {/* Brand & Tagline */}
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-lg font-black tracking-widest text-[#e5ff00]">
+              <span className="font-mono text-base font-black tracking-widest text-[#e5ff00]">
                 SPARKZ.TV
               </span>
-              <span className="border border-[#e5ff00]/40 bg-[#e5ff00]/10 px-1.5 py-0.5 font-mono text-[9px] uppercase font-bold text-[#e5ff00]">
+              <span className="border border-[#e5ff00]/40 bg-[#e5ff00]/10 px-1.5 py-0.5 font-mono text-[8px] uppercase font-bold text-[#e5ff00]">
                 UNDERGROUND LIVE
               </span>
             </div>
-            <p className="font-mono text-[11px] uppercase tracking-wider text-zinc-500 max-w-md">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-500 max-w-md leading-relaxed">
               High-bandwidth decentralized live video streaming for underground creators, DJs, and electronic broadcasts.
             </p>
-            <div className="space-y-1.5 font-mono text-xs text-zinc-400">
-              <div className="flex items-center gap-2">
+            
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-zinc-400">
+              <span className="flex items-center gap-1 text-zinc-500">
                 <MapPin className="h-3.5 w-3.5 text-[#e5ff00]" />
-                <span>Broadcasting HQ: 100 Shoreditch High St, London, E1 6JQ, UK</span>
+                <span>London, UK</span>
+              </span>
+              <span className="text-zinc-700">•</span>
+              <span>
+                Support: <a href="mailto:support@sparkztv.com" className="text-[#e5ff00] hover:underline">support@sparkztv.com</a>
+              </span>
+              <span className="text-zinc-700">•</span>
+              {/* Social Media Link Building & Identity Indexes */}
+              <div className="flex items-center gap-2.5 text-zinc-500 pl-1">
+                <a href="https://www.facebook.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Facebook Page">
+                  <Facebook className="h-3.5 w-3.5" />
+                </a>
+                <a href="https://x.com/sparkztv_live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="X Profile">
+                  <Twitter className="h-3.5 w-3.5" />
+                </a>
+                <a href="https://www.instagram.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Instagram Profile">
+                  <Instagram className="h-3.5 w-3.5" />
+                </a>
+                <a href="https://www.youtube.com/@sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="YouTube Channel">
+                  <Youtube className="h-3.5 w-3.5" />
+                </a>
+                <a href="https://www.linkedin.com/company/sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="LinkedIn Profile">
+                  <Linkedin className="h-3.5 w-3.5" />
+                </a>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-3.5 w-3.5 text-[#e5ff00]" />
-                <span>Hotline: +44 20 7946 0192</span>
-              </div>
-              <div>
-                Support Email: <a href="mailto:support@sparkztv.com" className="text-[#e5ff00] hover:underline">support@sparkztv.com</a>
-              </div>
-            </div>
-            {/* Social Media Link Building & Identity Indexes */}
-            <div className="flex items-center gap-3 pt-2 text-zinc-500">
-              <a href="https://www.facebook.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Facebook Page">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="https://x.com/sparkztv_live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="X Profile">
-                <Twitter className="h-4 w-4" />
-              </a>
-              <a href="https://www.instagram.com/sparkztv.live" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="Instagram Profile">
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a href="https://www.youtube.com/@sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="YouTube Channel">
-                <Youtube className="h-4 w-4" />
-              </a>
-              <a href="https://www.linkedin.com/company/sparkztv" target="_blank" rel="noopener noreferrer" className="hover:text-[#e5ff00] transition-colors" title="LinkedIn Profile">
-                <Linkedin className="h-4 w-4" />
-              </a>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 font-mono text-xs uppercase font-bold tracking-widest text-zinc-300">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 font-mono text-[11px] uppercase tracking-wider text-zinc-400 md:pt-1">
             <button
               type="button"
               data-testid="footer-privacy-btn"
               onClick={() => setActiveModal("privacy")}
-              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer"
+              className="flex items-center gap-1 hover:text-[#e5ff00] transition-colors cursor-pointer"
             >
               <ShieldCheck className="h-3.5 w-3.5 text-[#e5ff00]" />
-              <span>Privacy Policy</span>
+              <span>Privacy</span>
             </button>
 
             <button
               type="button"
               data-testid="footer-cookies-btn"
               onClick={() => setActiveModal("cookies")}
-              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer"
+              className="flex items-center gap-1 hover:text-[#e5ff00] transition-colors cursor-pointer"
             >
               <Cookie className="h-3.5 w-3.5 text-[#e5ff00]" />
               <span>Cookies</span>
@@ -130,17 +129,17 @@ export default function Footer() {
               type="button"
               data-testid="footer-terms-btn"
               onClick={() => setActiveModal("terms")}
-              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer"
+              className="flex items-center gap-1 hover:text-[#e5ff00] transition-colors cursor-pointer"
             >
               <FileText className="h-3.5 w-3.5 text-[#e5ff00]" />
-              <span>Terms & Conditions</span>
+              <span>Terms</span>
             </button>
 
             <button
               type="button"
               data-testid="footer-support-btn"
               onClick={() => setActiveModal("support")}
-              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-2.5 py-1 text-[#e5ff00] hover:bg-[#e5ff00]/20"
+              className="flex items-center gap-1 hover:text-[#e5ff00] transition-colors cursor-pointer border-b border-dashed border-[#e5ff00]/40 text-[#e5ff00] pb-0.5"
             >
               <LifeBuoy className="h-3.5 w-3.5" />
               <span>Support</span>
@@ -149,7 +148,7 @@ export default function Footer() {
             <Link
               to="/blog"
               data-testid="footer-blog-link"
-              className="flex items-center gap-1.5 hover:text-[#e5ff00] transition-colors cursor-pointer border border-[#e5ff00]/20 bg-[#e5ff00]/5 px-2.5 py-1 text-zinc-300 hover:border-[#e5ff00]/50"
+              className="flex items-center gap-1 hover:text-[#e5ff00] transition-colors cursor-pointer border-b border-dashed border-zinc-600 pb-0.5 text-zinc-300"
             >
               <BookOpen className="h-3.5 w-3.5 text-[#e5ff00]" />
               <span>The Journal</span>
@@ -158,11 +157,11 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-zinc-900 pt-6 sm:flex-row sm:items-center">
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">
+        <div className="mt-6 flex flex-col items-start justify-between gap-3 border-t border-zinc-900 pt-4 sm:flex-row sm:items-center">
+          <div className="font-mono text-[9px] uppercase tracking-[0.25em] text-zinc-600">
             © {new Date().getFullYear()} SPARKZ.TV — BROADCASTING FROM SOMEWHERE
           </div>
-          <div className="flex gap-4 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">
+          <div className="flex gap-4 font-mono text-[9px] uppercase tracking-[0.25em] text-zinc-600">
             <span>PWR: AWS IVS</span>
             <span>BUILT LOUD</span>
           </div>

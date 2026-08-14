@@ -1,0 +1,8 @@
+# ads.txt - SPARKZ.TV Authorized Digital Sellers Inventory
+# For more information, visit https://iabtechlab.com/ads-txt/
+
+# Google AdSense / Ad Exchange placeholder
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+
+# Additional advertising network networks can be declared here in the following format:
+# <Field 1: Domain Name of the Advertising System>, <Field 2: Publisher's Account ID>, <Field 3: Type of Relationship (DIRECT/RESELLER)>, <Field 4: Certification Authority ID (Optional)>

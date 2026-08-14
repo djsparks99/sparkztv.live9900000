@@ -292,21 +292,21 @@ export default function Browse() {
   return (
     <div className="min-h-screen">
       <SEO
-        title="Underground Live Radio, DJ Sets & Broadcasters"
-        description="Discover the finest underground music streams, breakbeat jungle, drum & bass, tech house, dubstep, and roots reggae broadcasts on SPARKZ.TV. Join the Signal."
+        title="Live Drum and Bass, Jungle &amp; Underground Radio"
+        description="Discover the finest live drum and bass, old skool jungle, UK garage, and underground DJ sets on SPARKZ.TV. Watch high-fidelity 320kbps radio streams."
         image="/og-image.jpg"
         keywords="sparkztv, sparkz, live DJ streams, underground radio, dnb livestream, drum and bass set, breakbeat jungle, tech house live, garage music, dubplate selector, sound system culture"
       />
-      <h1 className="sr-only">Underground Live Radio, DJ Sets &amp; Broadcasters on SPARKZ.TV</h1>
+      <h1 className="sr-only">Live Drum and Bass, Jungle &amp; Underground DJ Sets on SPARKZ.TV</h1>
       {/* Dynamic Twitch-style stream carousel */}
       <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />
 
       <Marquee items={CATEGORIES.map((c) => c.toUpperCase())} />
 
       {/* Filters + Grid */}
-      <section id="grid" className="mx-auto max-w-[1440px] px-6 pt-12 pb-24 sm:pb-28 lg:pb-32">
+      <section id="grid" className="mx-auto max-w-[1440px] px-6 pt-6 pb-12 sm:pb-16 lg:pb-20">
         <div className="flex flex-col">
-          <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+          <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <div className="label-caps">Signal Directory</div>
             <h2 className="font-display text-3xl font-black tracking-tighter sm:text-4xl">
@@ -334,7 +334,7 @@ export default function Browse() {
           </div>
         </div>
 
-        <div className="mb-8 flex flex-wrap gap-2">
+        <div className="mb-5 flex flex-wrap gap-2">
           <button
             data-testid="category-all"
             onClick={() => setCategory(null)}
@@ -373,7 +373,7 @@ export default function Browse() {
             </div>
             
             {/* 4 Skeleton Cards underneath the Scanner to maintain visual weight */}
-            <div className="w-full mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-35">
+            <div className="w-full mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-35">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="border border-[#1a1a1d] bg-[#070709] flex flex-col relative overflow-hidden">
                   <div className="aspect-video w-full bg-[#121215] relative">
@@ -416,7 +416,7 @@ export default function Browse() {
             )}
             <div
               data-testid="channels-grid"
-              className={`grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-300 ${isScreenLoading ? "opacity-75 select-none pointer-events-none" : ""}`}
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-300 ${isScreenLoading ? "opacity-75 select-none pointer-events-none" : ""}`}
             >
               {safeChannels.map((c, idx) => {
                 const cardKey = c.id || c.channel_id || c.username || `channel-card-${idx}`;

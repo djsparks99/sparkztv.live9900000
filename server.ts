@@ -1059,6 +1059,13 @@ async function syncMasterChannelLiveStatus(force = false) {
 const PORT = 3000;
 
 export const app = express();
+
+// Set high-security HSTS headers to ensure secure connections and pass strict HSTS audits
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  next();
+});
+
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allowedHeaders: ["*"] }));
 app.options("*", cors());
 app.use(express.json({ limit: "50mb" }));
