@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { db, auth } from "@/lib/firebase";
+import SEO from "@/components/SEO";
 import {
   collection,
   onSnapshot,
@@ -210,6 +211,13 @@ export default function Blog() {
 
   const activePost = posts.find((p) => p.slug === selectedSlug);
 
+  // Dynamic SEO details
+  const seoTitle = activePost ? activePost.title : "The Transmissions Journal";
+  const seoDesc = activePost ? activePost.summary : "Platform specifications, deep-dives into sound-system engineering, and developer updates.";
+  const seoKeywords = activePost && activePost.tags 
+    ? `sparkztv, blog, ${activePost.tags.join(", ")}, underground music` 
+    : "sparkztv, blog, devlogs, transmissions, underground radio, drum and bass, jungle";
+
   // Custom visual markdown-like renderer for post contents
   const renderFormattedContent = (text) => {
     if (!text) return null;
@@ -286,6 +294,7 @@ export default function Blog() {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 md:px-8">
+      <SEO title={seoTitle} description={seoDesc} keywords={seoKeywords} />
       
       {/* Blog Hero/Header */}
       <div className="mb-8 border-b border-[#27272a]/80 pb-6">

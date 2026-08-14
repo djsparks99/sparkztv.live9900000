@@ -146,6 +146,10 @@ export default function Channel() {
     ? channel.stream_title || channel.bio || `Watch ${channel.display_name || channel.username} live on Sparkz.TV`
     : `Watch underground live streams on Sparkz.TV`;
 
+  const channelKeywords = channel
+    ? `sparkztv, ${channel.username}, ${channel.display_name || ""}, live stream, ${channel.category || ""}, underground DJ, selector, music signal, sound system`
+    : `sparkztv, ${username}, live stream, underground radio, selector`;
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [username]);
@@ -300,6 +304,7 @@ export default function Channel() {
         isLive={isLive}
         category={channel?.category}
         type="profile"
+        keywords={channelKeywords}
       />
 
 

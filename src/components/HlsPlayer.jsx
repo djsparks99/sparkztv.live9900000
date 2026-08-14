@@ -28,64 +28,18 @@ export default function HlsPlayer({
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [hlsSupported, setHlsSupported] = useState(true);
+  const [forceLive, setForceLive] = useState(false);
 
-  // Ad/Sponsor Overlay States
-  const [adCountdown, setAdCountdown] = useState(10);
+  // Ad/Sponsor Overlay States (Always disabled on site)
+  const [adCountdown, setAdCountdown] = useState(0);
   const [showAd, setShowAd] = useState(false);
 
-  // Trigger ad if user is not pro and not subscriber
   useEffect(() => {
-    if (playbackId && isLive && !isSubscriber && !isPro) {
-      setShowAd(true);
-      setAdCountdown(10);
-    } else {
-      setShowAd(false);
-    }
-  }, [playbackId, isLive, isSubscriber, isPro]);
-
-  useEffect(() => {
-    if (!showAd) return;
-    if (adCountdown <= 0) {
-      setShowAd(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setAdCountdown(prev => prev - 1);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [showAd, adCountdown]);
+    setShowAd(false);
+  }, []);
 
   // Automated Sponsor Banner States
   const [showFloatingBanner, setShowFloatingBanner] = useState(false);
-
-  // Trigger automated floating banner every 30 minutes, keeping it visible for 11 seconds.
-  // We also run a 15-second initial delay trigger so developers and users see it instantly!
-  useEffect(() => {
-    // Initial 15-second timer
-    const initialTimer = setTimeout(() => {
-      setShowFloatingBanner(true);
-    }, 15000);
-
-    // 30 minutes interval (30 * 60 * 1000 ms)
-    const intervalTime = 30 * 60 * 1000;
-    const interval = setInterval(() => {
-      setShowFloatingBanner(true);
-    }, intervalTime);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(interval);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (showFloatingBanner) {
-      const dismissTimer = setTimeout(() => {
-        setShowFloatingBanner(false);
-      }, 11000);
-      return () => clearTimeout(dismissTimer);
-    }
-  }, [showFloatingBanner]);
 
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
@@ -102,7 +56,7 @@ export default function HlsPlayer({
     };
   }, [analyser, onAnalyserReady]);
 
-  const offline = !playbackId || !isLive;
+  const offline = !playbackId || (!isLive && !forceLive);
   const hlsUrl = playbackId
     ? (playbackId.startsWith("http") ? playbackId : `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`)
     : "";
@@ -305,6 +259,15 @@ export default function HlsPlayer({
         <div className="mt-2 max-w-md font-mono text-[10px] sm:text-xs text-zinc-600 px-2">
           The stream will resume automatically the second the DJ starts pushing.
         </div>
+        {playbackId && (
+          <button
+            onClick={() => setForceLive(true)}
+            className="mt-6 flex items-center gap-2 border border-[#e5ff00]/40 bg-[#e5ff00]/5 px-4 py-2 font-mono text-xs uppercase tracking-widest text-[#e5ff00] hover:bg-[#e5ff00]/20 hover:border-[#e5ff00] transition-all cursor-pointer shadow-[0_0_15px_rgba(229,255,0,0.1)] active:scale-95 rounded-none"
+          >
+            <Sparkles className="h-3.5 w-3.5 animate-spin text-[#e5ff00]" />
+            FORCE TUNING (TEST PLAYBACK ID)
+          </button>
+        )}
       </div>
     );
   }

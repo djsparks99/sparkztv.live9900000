@@ -21,9 +21,11 @@ export default function SEO({
   type = "website",
   isLive = false,
   category,
+  keywords,
 }) {
-  const defaultTitle = "SPARKZ.TV // Your Stream, Your Mix, Your Rules";
-  const defaultDesc = "Decentralized broadcast protocol. No censorship. Full control. Watch live streams from the world's best underground DJs.";
+  const defaultTitle = "SPARKZ.TV // High-Fidelity Underground Electronic Music Streams";
+  const defaultDesc = "Watch high-fidelity live audio and video streams from the world's best underground electronic music DJs. No censorship, 320kbps streams, and pure sound-system culture.";
+  const defaultKeywords = "sparkztv, sparkz, sparkz.tv, underground electronic music, live DJ stream, drum and bass live, jungle music stream, dnb radio, pirate radio London, dubplate culture, UK garage live, dubstep livestream, sound system culture, selector, bass weight, independent music platform";
   const defaultImage = "/og-image.jpg";
 
   // Use primitive dependencies to avoid infinite re-renders
@@ -55,7 +57,11 @@ export default function SEO({
     updateOrCreateMeta("property", "og:description", finalDesc);
     updateOrCreateMeta("name", "twitter:description", finalDesc);
 
-    // 3. Social & dynamic titles
+    // 3. Keywords handling
+    const finalKeywords = keywords || defaultKeywords;
+    updateOrCreateMeta("name", "keywords", finalKeywords);
+
+    // 4. Social & dynamic titles
     updateOrCreateMeta("property", "og:title", finalTitle);
     updateOrCreateMeta("name", "twitter:title", finalTitle);
 
@@ -92,7 +98,7 @@ export default function SEO({
     updateOrCreateMeta("property", "og:image:width", "1200");
     updateOrCreateMeta("property", "og:image:height", "630");
 
-  }, [title, description, image, url, type, isLive, category]);
+  }, [title, description, image, url, type, isLive, category, keywords]);
 
   return null; // Component does not render any visual UI elements itself
 }

@@ -284,6 +284,7 @@ export default function Browse() {
         title="Underground Live Radio, DJ Sets & Broadcasters"
         description="Discover the finest underground music streams, breakbeat jungle, drum & bass, tech house, dubstep, and roots reggae broadcasts on SPARKZ.TV. Join the Signal."
         image="/og-image.jpg"
+        keywords="sparkztv, sparkz, live DJ streams, underground radio, dnb livestream, drum and bass set, breakbeat jungle, tech house live, garage music, dubplate selector, sound system culture"
       />
       {/* Dynamic Twitch-style stream carousel */}
       <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />

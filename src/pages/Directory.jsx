@@ -254,6 +254,7 @@ export default function Directory() {
         title="Find DJs & Broadcaster Directory"
         description="Search through our dynamic streamer frequency directory to find live underground DJ sets, radio broadcasts, jungle, drum & bass, tech, house, reggae, and acid signals on SPARKZ.TV."
         image="/og-image.jpg"
+        keywords="find DJs, live stream list, underground broadcaster search, jungle DJs, drum and bass live link, radio channel directory, pirate radio archive"
       />
       <div className="mx-auto max-w-[1440px] px-6 pt-8 pb-24 sm:pb-28 lg:pb-32" data-testid="streamer-directory-page">
       {/* Header Banner */}
