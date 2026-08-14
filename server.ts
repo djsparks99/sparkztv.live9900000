@@ -589,6 +589,7 @@ interface ChannelDoc {
   schedules?: any[];
   tags?: string[];
   stream_started_at?: string | null;
+  views?: number;
 }
 
 class InMemStore {
@@ -801,6 +802,7 @@ async function syncChannelsFromFirestore() {
         schedules: data.schedules || [],
         tags: data.tags || [],
         stream_started_at: data.stream_started_at || null,
+        views: data.views !== undefined ? Number(data.views) : 0,
       };
       
       db.channels.set(doc.id, channel);
@@ -877,6 +879,7 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
     stream_started_at: c.stream_started_at || null,
     bio: user?.bio || c.bio || "",
     socials: user?.socials || {},
+    views: c.views !== undefined ? Number(c.views) : 0,
   };
 
   if (opts.include_stream_key) {
@@ -1246,6 +1249,7 @@ async function startServer() {
               schedules: data.schedules || [],
               tags: data.tags || [],
               stream_started_at: data.stream_started_at || null,
+              views: data.views !== undefined ? Number(data.views) : 0,
             };
             db.channels.set(fsDoc.id, channel);
             if (channel.username) {
@@ -1285,6 +1289,7 @@ async function startServer() {
               schedules: data.schedules || [],
               tags: data.tags || [],
               stream_started_at: data.stream_started_at || null,
+              views: data.views !== undefined ? Number(data.views) : 0,
             };
             db.channels.set(matchedDoc.id, channel);
             if (channel.username) {
@@ -2006,6 +2011,15 @@ async function startServer() {
       if (matchedChannel.username) keysToRegister.add(matchedChannel.username.toLowerCase());
       if (normalizedId) keysToRegister.add(normalizedId);
 
+      // Track session-based cumulative view count
+      const cleanChanId = (matchedChannel.channel_id || "djsparkz").toLowerCase().trim();
+      const previousIpMap = activeStreamViewers.get(cleanChanId);
+      const isNewSession = !previousIpMap || !previousIpMap.has(ip) || (Date.now() - previousIpMap.get(ip) > 15 * 60 * 1000);
+      
+      if (isNewSession) {
+        matchedChannel.views = (matchedChannel.views || 0) + 1;
+      }
+
       for (const k of keysToRegister) {
         const cleanK = k.trim();
         if (!cleanK) continue;
@@ -2025,6 +2039,7 @@ async function startServer() {
         try {
           const payload = {
             viewer_count: trueViewerCount,
+            views: matchedChannel.views || 0,
             last_updated: new Date().toISOString()
           };
           await setFirestoreDocSafe("channels", docId, payload, true);

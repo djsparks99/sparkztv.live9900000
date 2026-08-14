@@ -15,7 +15,7 @@ import LiveDuration from "@/components/LiveDuration";
 import UserLocationTime from "@/components/UserLocationTime";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/lib/auth-context";
-import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe, Volume2, Disc3, Music, Youtube } from "lucide-react";
+import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe, Volume2, Disc3, Music, Youtube, Shield } from "lucide-react";
 import { useLivepeerAutoPoll } from "@/hooks/useLivepeerAutoPoll";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -418,11 +418,32 @@ export default function Channel() {
                   {/* Text Area */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <h1 className="font-display text-sm font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1">
+                      <h1 className="font-display text-sm font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1.5">
                         <span>@{channel.username || username}</span>
                         <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-[#9146ff] text-white" title="Verified Sparkz Partner">
                           <Check className="h-2 w-2 stroke-[4]" />
                         </span>
+                        {/* Shield Badge */}
+                        {(() => {
+                          const isCreator = (channel.username || "").toLowerCase() === "djsparkz";
+                          const viewCount = Number(channel.views || 0);
+                          const meetsViewsThreshold = viewCount >= 3000;
+                          
+                          if (isCreator) {
+                            return (
+                              <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-[#e5ff00] text-black" title="Platform Creator & Founder">
+                                <Shield className="h-2.5 w-2.5 fill-black stroke-[2]" />
+                              </span>
+                            );
+                          } else if (meetsViewsThreshold) {
+                            return (
+                              <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-zinc-800 text-[#e5ff00] border border-zinc-700" title={`Elite Broadcaster (${viewCount.toLocaleString()} Views)`}>
+                                <Shield className="h-2 w-2.5 fill-[#e5ff00] stroke-[2]" />
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </h1>
                       
                       {isLive && (
