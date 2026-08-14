@@ -156,6 +156,16 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* About SPARKZ.TV SEO Paragraph Section */}
+        <div className="mt-8 border-t border-zinc-900 pt-6">
+          <h3 className="font-mono text-xs font-black uppercase tracking-widest text-[#e5ff00]">
+            ABOUT THE SPARKZ.TV BROADCAST PROTOCOL
+          </h3>
+          <p className="mt-2.5 font-mono text-[10px] uppercase leading-relaxed text-zinc-500 max-w-7xl">
+            SPARKZ.TV is a high-performance, decentralized live video broadcasting protocol built specifically for underground electronic music, independent selectors, and global sound-system culture. Designed to bypass the rigid, commercialized algorithms of mainstream hosting platforms, SPARKZ.TV provides a censorship-resistant space where DJs, radio hosts, and digital broadcasters can stream live sets in pristine, high-fidelity 320kbps AAC audio. From old skool jungle and darkside drum &amp; bass to UK garage, deep dubstep, and tactical grime, our network serves as a cultural repository for raw audio expression. Discover live channels, tune into secret studio feeds, support creators directly using our interactive micro-tipping system, and join a resilient global network dedicated to preserving the independent radio transmission legacy.
+          </p>
+        </div>
+
         {/* Bottom Bar */}
         <div className="mt-6 flex flex-col items-start justify-between gap-3 border-t border-zinc-900 pt-4 sm:flex-row sm:items-center">
           <div className="font-mono text-[9px] uppercase tracking-[0.25em] text-zinc-600">
