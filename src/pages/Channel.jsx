@@ -15,7 +15,7 @@ import LiveDuration from "@/components/LiveDuration";
 import UserLocationTime from "@/components/UserLocationTime";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/lib/auth-context";
-import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe } from "lucide-react";
+import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe, Volume2, Disc3, Music, Youtube } from "lucide-react";
 import { useLivepeerAutoPoll } from "@/hooks/useLivepeerAutoPoll";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -541,18 +541,19 @@ export default function Channel() {
 
                   {/* Social Links block */}
                   {channel.socials && Object.values(channel.socials).some(Boolean) && (
-                    <div className="flex flex-col gap-1 min-w-[160px] md:text-right">
+                    <div className="flex flex-col gap-1 min-w-[200px] md:items-end">
                       <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1 md:text-right">// LINKS</div>
-                      <div className="flex flex-wrap md:flex-col gap-x-3 gap-y-1 justify-start md:items-end font-mono text-[10px]">
+                      <div className="flex flex-wrap gap-2 items-center justify-start md:justify-end font-mono text-[10px]">
                         {channel.socials.soundcloud && (
                           <a
                             href={channel.socials.soundcloud.startsWith("http") ? channel.socials.soundcloud : `https://${channel.socials.soundcloud}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                            title="SoundCloud"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff5500] hover:border-[#ff5500]/40 transition-all uppercase"
                           >
+                            <Volume2 className="h-3.5 w-3.5" />
                             <span>SOUNDCLOUD</span>
-                            <Globe className="h-3 w-3" />
                           </a>
                         )}
                         {channel.socials.mixcloud && (
@@ -560,10 +561,11 @@ export default function Channel() {
                             href={channel.socials.mixcloud.startsWith("http") ? channel.socials.mixcloud : `https://${channel.socials.mixcloud}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                            title="Mixcloud"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#00e6ff] hover:border-[#00e6ff]/40 transition-all uppercase"
                           >
+                            <Disc3 className="h-3.5 w-3.5" />
                             <span>MIXCLOUD</span>
-                            <Globe className="h-3 w-3" />
                           </a>
                         )}
                         {channel.socials.instagram && (
@@ -571,10 +573,35 @@ export default function Channel() {
                             href={channel.socials.instagram.startsWith("http") ? channel.socials.instagram : `https://${channel.socials.instagram}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-zinc-400 hover:text-[#e5ff00] transition-colors uppercase"
+                            title="Instagram"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#e1306c] hover:border-[#e1306c]/40 transition-all uppercase"
                           >
+                            <Instagram className="h-3.5 w-3.5" />
                             <span>INSTAGRAM</span>
-                            <Instagram className="h-3 w-3" />
+                          </a>
+                        )}
+                        {channel.socials.spotify && (
+                          <a
+                            href={channel.socials.spotify.startsWith("http") ? channel.socials.spotify : `https://${channel.socials.spotify}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Spotify"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#1db954] hover:border-[#1db954]/40 transition-all uppercase"
+                          >
+                            <Music className="h-3.5 w-3.5" />
+                            <span>SPOTIFY</span>
+                          </a>
+                        )}
+                        {channel.socials.youtube && (
+                          <a
+                            href={channel.socials.youtube.startsWith("http") ? channel.socials.youtube : `https://${channel.socials.youtube}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="YouTube"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff0000] hover:border-[#ff0000]/40 transition-all uppercase"
+                          >
+                            <Youtube className="h-3.5 w-3.5" />
+                            <span>YOUTUBE</span>
                           </a>
                         )}
                       </div>
