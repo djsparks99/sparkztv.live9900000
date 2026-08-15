@@ -227,15 +227,7 @@ export default function Navbar() {
           {/* User state */}
           {user === undefined ? null : user ? (
             <div className="flex items-center gap-2">
-              {/* Twitch-style Bits Token Button */}
-              <Link
-                to="/payouts?buy=true"
-                className="hidden sm:flex items-center gap-1 px-3 py-1 bg-[#18181b] border border-[#e5ff00]/20 hover:border-[#e5ff00] text-[#e5ff00] font-mono text-[10px] font-black uppercase transition-all"
-              >
-                <Coins className="h-3.5 w-3.5 animate-bounce" />
-                <span>BUY BITS</span>
-              </Link>
-              
+              {/* Notification bell and user avatar */}
               <div className="hidden sm:block">
                 <NotificationBell />
               </div>

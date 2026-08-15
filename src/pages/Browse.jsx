@@ -353,8 +353,6 @@ export default function Browse() {
         {/* Dynamic Twitch-style stream carousel */}
         <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />
 
-        <Marquee items={CATEGORIES.map((c) => c.toUpperCase())} />
-
         {/* Filters + Grid */}
         <section id="grid" className="mx-auto max-w-[1440px] px-6 pt-6 pb-12 sm:pb-16 lg:pb-20">
           <div className="flex flex-col">
