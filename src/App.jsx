@@ -51,7 +51,7 @@ export default function App() {
 
         {/* Scrollable Page Router Viewport */}
         <main className={`flex-1 bg-[#0e0e10] relative flex flex-col min-h-0 ${isChannelPage ? "overflow-hidden h-full" : "overflow-y-auto"}`}>
-          <div className="flex-1">
+          <div className={`flex-1 ${isChannelPage ? "h-full min-h-0 flex flex-col" : ""}`}>
             <Routes>
               {/* Standard Routes */}
               <Route path="/" element={<Browse />} />

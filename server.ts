@@ -1026,13 +1026,15 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
   if (!c || c.channel_id === "undefined" || c.username === "undefined") return {};
   
   const isMaster = (c.username || "").toLowerCase() === "djsparkz" || c.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
-  const user = db.users.get(c.user_uid || "nsU1v44XFnNn3FloJvNePqj6cBG2");
+  const user = isMaster
+    ? (Array.from(db.users.values()).find((u) => (u.email || "").toLowerCase() === "markysparks99@gmail.com") || db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2"))
+    : db.users.get(c.user_uid || "nsU1v44XFnNn3FloJvNePqj6cBG2");
   const activePhoto = c.photo_url || user?.photo_url || null;
   
   const channelId = isMaster ? "djsparkz" : (c.channel_id || c.username || "");
   const username = isMaster ? "djsparkz" : (c.username || "");
   const displayName = isMaster ? "djsparkz" : (c.display_name || username);
-  const userUid = isMaster ? "nsU1v44XFnNn3FloJvNePqj6cBG2" : (c.user_uid || "");
+  const userUid = isMaster ? (user?.uid || "nsU1v44XFnNn3FloJvNePqj6cBG2") : (c.user_uid || "");
   const playbackId = c.playback_id || "";
 
   const trueViewerCount = getStrictViewerCount(channelId, username);
@@ -1062,6 +1064,8 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
     tags: c.tags || [],
     stream_started_at: c.stream_started_at || null,
     bio: user?.bio || c.bio || "",
+    genre: user?.genre || c.genre || "",
+    location: user?.location || c.location || "",
     socials: user?.socials || {},
     views: c.views !== undefined ? Number(c.views) : 0,
   };
@@ -1077,7 +1081,8 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
 
 async function getMasterChannel() {
   let chan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
-  const user = db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2")!;
+  const user = Array.from(db.users.values()).find((u) => (u.email || "").toLowerCase() === "markysparks99@gmail.com") 
+    || db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2")!;
 
   const hasDummyKey = chan && chan.stream_key === "SK_us-west-2_dummyKey999999";
   const hasAWSClient = !!getIvsClient();
@@ -2092,6 +2097,52 @@ async function startServer() {
         payout_details: user.payout_details || null,
         last_updated: new Date().toISOString()
       }, true, req.authToken);
+
+      // Sync profile updates to their channel document in memory and Firestore
+      const usernameLower = (user.username || "").toLowerCase().trim();
+      const isMasterUser = usernameLower === "djsparkz" || (user.email || "").toLowerCase() === "markysparks99@gmail.com" || user.uid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
+
+      const channelsToUpdate = new Set<string>();
+      if (isMasterUser) {
+        channelsToUpdate.add("djsparkz");
+        channelsToUpdate.add("nsU1v44XFnNn3FloJvNePqj6cBG2");
+      }
+      if (usernameLower) {
+        channelsToUpdate.add(usernameLower);
+      }
+      channelsToUpdate.add(user.uid);
+
+      for (const channelId of channelsToUpdate) {
+        let channel = db.channels.get(channelId);
+        if (!channel && isMasterUser) {
+          try {
+            channel = await getMasterChannel();
+          } catch (e) {
+            console.warn("Failed to get master channel in sync:", e);
+          }
+        }
+        if (channel) {
+          channel.display_name = user.display_name;
+          if (user.bio !== undefined) channel.bio = user.bio;
+          if (user.genre !== undefined) channel.genre = user.genre;
+          if (user.location !== undefined) channel.location = user.location;
+          if (user.socials !== undefined) channel.socials = user.socials;
+          if (user.photo_url !== undefined) channel.photo_url = user.photo_url;
+          channel.last_updated = new Date().toISOString();
+
+          db.channels.set(channelId, channel);
+
+          await setFirestoreDocSafe("channels", channelId, {
+            display_name: channel.display_name,
+            bio: channel.bio || "",
+            genre: channel.genre || "",
+            location: channel.location || "",
+            socials: channel.socials || null,
+            photo_url: channel.photo_url || null,
+            last_updated: channel.last_updated
+          }, true, req.authToken);
+        }
+      }
 
       return res.json({
         ...user,

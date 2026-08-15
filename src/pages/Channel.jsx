@@ -545,7 +545,7 @@ export default function Channel() {
   );
 
   return (
-    <div className="w-full h-full bg-black text-white relative flex flex-col overflow-hidden" data-testid={`channel-page-${username}`}>
+    <div className="w-full h-full min-h-0 flex-1 bg-black text-white relative flex flex-col overflow-hidden" data-testid={`channel-page-${username}`}>
       <SEO
         title={channelTitle}
         description={channelDesc}
@@ -556,9 +556,9 @@ export default function Channel() {
       />
 
       {/* DESKTOP VIEW: Side-by-Side Split View (Video + Profile details scroll on the left, Chat stays locked on the right) */}
-      <div className="hidden lg:flex w-full h-full overflow-hidden items-stretch">
+      <div className="hidden lg:flex w-full h-full min-h-0 flex-1 overflow-hidden items-stretch">
         {/* Left Column (Main Scrollable Content Area) */}
-        <div className="flex-1 h-full overflow-y-auto no-scrollbar flex flex-col">
+        <div className="flex-1 h-full min-h-0 overflow-y-auto flex flex-col scroll-smooth overscroll-contain">
           
           {/* Unified Player + Metadata Panel: Sits completely flush directly underneath with zero gaps, spanning 100% width */}
           <div className="w-full bg-[#0e0e10] border-b border-[#1f1f23] flex flex-col shrink-0">
@@ -614,7 +614,7 @@ export default function Channel() {
 
         {/* Right Column (Locked Sidebar Chat Panel - Matches exact height, doesn't scroll with content) */}
         {!isChatCollapsed ? (
-          <aside className="w-[320px] xl:w-[360px] h-full flex flex-col border-l border-[#1f1f23] bg-[#0e0e10] shrink-0">
+          <aside className="w-[320px] xl:w-[360px] h-full min-h-0 flex flex-col border-l border-[#1f1f23] bg-[#0e0e10] shrink-0">
             <ChatPanel username={channel.username} onCollapse={toggleChatCollapse} />
           </aside>
         ) : (
