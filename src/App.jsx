@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import LiveSidebar from "@/components/LiveSidebar";
 import AuthModal from "@/components/AuthModal";
+import UsernameLockModal from "@/components/UsernameLockModal";
 
 // Real pages
 import Browse from "@/pages/Browse";
@@ -36,6 +37,7 @@ export default function App() {
     <div className="h-screen bg-[#0e0e10] text-[#efeff1] font-sans flex flex-col selection:bg-[#e5ff00] selection:text-black overflow-hidden">
       {/* Global Auth Modal */}
       <AuthModal />
+      <UsernameLockModal />
 
       {/* Twitch Top Navigation Bar */}
       <Navbar />

@@ -107,6 +107,22 @@ export async function savePermanentUsername(uid, { username, display_name, email
     return existingData;
   }
 
+  // Check if username is already taken by querying the channels collection
+  try {
+    const nameCheckSnap = await getDoc(doc(db, "channels", cleanUsername));
+    if (nameCheckSnap.exists()) {
+      const data = nameCheckSnap.data();
+      if (data && data.user_uid && data.user_uid !== uid) {
+        throw new Error("This permanent handle is already claimed by another broadcaster.");
+      }
+    }
+  } catch (e) {
+    if (e.message && e.message.includes("already claimed")) {
+      throw e;
+    }
+    console.warn("Firestore uniqueness check notice:", e);
+  }
+
   const userData = {
     uid,
     email: email || (existingData ? existingData.email : "") || "",
@@ -131,7 +147,8 @@ export async function savePermanentUsername(uid, { username, display_name, email
   try {
     await setDoc(userRef, userData, { merge: true });
   } catch (err) {
-    console.warn("Firestore setDoc user warning:", err);
+    console.error("Firestore setDoc user error:", err);
+    throw new Error(err.message || "Failed to create user profile in Firestore. Check your Firebase credentials & security rules.");
   }
 
   // Also sync or create channel doc in Firestore

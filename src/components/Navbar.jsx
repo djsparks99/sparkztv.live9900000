@@ -236,7 +236,9 @@ export default function Navbar() {
                 <span>BUY BITS</span>
               </Link>
               
-              <NotificationBell />
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
               <UserMenu user={user} onLogout={onLogout} />
             </div>
           ) : (
@@ -328,17 +330,13 @@ function UserMenu({ user, onLogout }) {
       <DropdownMenuTrigger asChild>
         <button
           data-testid="user-menu-trigger"
-          className="flex items-center gap-1.5 border border-zinc-800 bg-black px-2.5 py-1.5 transition-colors hover:border-white focus:border-[#e5ff00] focus:outline-none"
+          className="flex items-center justify-center rounded-full overflow-hidden h-9 w-9 border border-zinc-800 bg-black hover:border-white focus:border-[#e5ff00] focus:outline-none transition-all duration-200 shrink-0"
         >
           <img
             src={user.photo_url ? fileUrl(user.photo_url) : DEFAULT_AVATAR}
-            alt=""
-            className="h-6 w-6 object-cover border border-[#e5ff00]/40"
+            alt={user.display_name}
+            className="h-full w-full object-cover"
           />
-          <span className="hidden font-mono text-xs font-bold uppercase tracking-widest sm:inline max-w-[100px] truncate">
-            {user.username}
-          </span>
-          <ChevronDown className="h-3 w-3 text-zinc-500" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

@@ -16,6 +16,7 @@ export default function HlsPlayer({
   isSubscriber = false,
   isPro = false,
   username = "",
+  borderless = false,
 }) {
   const playerRef = useRef(null);
   const videoRef = useRef(null);
@@ -293,28 +294,39 @@ export default function HlsPlayer({
     }
   };
 
-  const wrapWithIndustrialFrame = (innerContent) => (
-    <div className="relative p-2.5 bg-[#141416] border-2 border-[#2a2a2e] shadow-[0_0_30px_rgba(0,0,0,0.85)] select-none">
-      {/* High-tech corner rivets */}
-      <div className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-      <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-      <div className="absolute bottom-1 left-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-      <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
-      
-      {/* Accent lines or brackets on the corners */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#e5ff00]" />
-      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#e5ff00]" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#e5ff00]" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#e5ff00]" />
+  const wrapWithIndustrialFrame = (innerContent) => {
+    if (borderless) {
+      return (
+        <div className="relative p-0 bg-black select-none w-full h-full flex flex-col justify-center items-center">
+          {innerContent}
+        </div>
+      );
+    }
+    return (
+      <div className="relative p-2.5 bg-[#141416] border-2 border-[#2a2a2e] shadow-[0_0_30px_rgba(0,0,0,0.85)] select-none">
+        {/* High-tech corner rivets */}
+        <div className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+        <div className="absolute bottom-1 left-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+        <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-zinc-600 border border-zinc-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+        
+        {/* Accent lines or brackets on the corners */}
+        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#e5ff00]" />
+        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#e5ff00]" />
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#e5ff00]" />
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#e5ff00]" />
 
-      {innerContent}
-    </div>
-  );
+        {innerContent}
+      </div>
+    );
+  };
 
   if (offline) {
     return wrapWithIndustrialFrame(
       <div
-        className="video-shell aspect-video w-full flex flex-col items-center justify-center bg-[#070708] p-4 sm:p-8 text-center border border-[#27272a]/50"
+        className={`video-shell aspect-video w-full flex flex-col items-center justify-center bg-[#070708] p-4 sm:p-8 text-center ${
+          borderless ? "border-0" : "border border-[#27272a]/50"
+        }`}
         data-testid="hls-player-offline"
       >
         <div className="live-badge" style={{ background: "#1f1f23", color: "#a1a1aa", borderColor: "#3f3f46" }}>
@@ -341,11 +353,13 @@ export default function HlsPlayer({
   }
 
   return (
-    <div className="w-full flex flex-col gap-3">
+    <div className={borderless ? "w-full h-full flex flex-col" : "w-full flex flex-col gap-3"}>
       {wrapWithIndustrialFrame(
         <div
           ref={playerRef}
-          className="video-shell aspect-video w-full group relative overflow-hidden bg-black border border-[#27272a]/50"
+          className={`video-shell aspect-video w-full group relative overflow-hidden bg-black ${
+            borderless ? "border-0 h-full" : "border border-[#27272a]/50"
+          }`}
           data-testid="hls-player"
         >
           {/* Video Element */}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { AuthShell } from "@/pages/Login";
 import { toast } from "sonner";
+import { AlertCircle } from "lucide-react";
 
 export default function Register() {
   const { register, loginWithOAuth } = useAuth();
@@ -14,30 +15,35 @@ export default function Register() {
     display_name: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     const res = await register(form);
     setLoading(false);
     if (res.ok) {
       toast.success("Channel provisioned & permanent username locked into Firestore.");
       navigate("/dashboard");
     } else {
+      setError(res.error || "Registration failed");
       toast.error(res.error || "Registration failed");
     }
   };
 
   const handleOAuth = async (provider) => {
     setLoading(true);
+    setError("");
     const res = await loginWithOAuth(provider);
     setLoading(false);
     if (res.ok) {
       toast.success("Authenticated with " + provider);
       navigate("/dashboard");
     } else {
+      setError(res.error || `${provider} authentication failed`);
       toast.error(res.error || `${provider} authentication failed`);
     }
   };
@@ -92,6 +98,33 @@ export default function Register() {
           OR REGISTER WITH EMAIL
         </span>
       </div>
+
+      {error && (
+        <div className="mb-5 rounded-none border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-200">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <p className="font-bold uppercase tracking-wider text-[9px] text-red-400 font-mono">// ERROR ENCOUNTERED</p>
+              <p className="leading-relaxed font-mono text-[10px] break-words">{error}</p>
+              
+              {(error.toLowerCase().includes("operation-not-allowed") || 
+                error.toLowerCase().includes("not allowed") || 
+                error.toLowerCase().includes("disabled") ||
+                error.toLowerCase().includes("configuration")) && (
+                <div className="mt-3 pt-3 border-t border-red-500/20 text-[11px] leading-relaxed text-zinc-300 font-sans space-y-1.5">
+                  <p className="font-bold text-white">How to enable Email & Password Authentication:</p>
+                  <ol className="list-decimal pl-4 space-y-1.5 text-zinc-400 text-[10px]">
+                    <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#e5ff00] hover:underline font-semibold">Firebase Console</a>.</li>
+                    <li>Select your project: <strong className="text-white font-mono">ai-studio-applet-webapp-400d5</strong></li>
+                    <li>Navigate to <strong className="text-white">Authentication</strong> &gt; <strong className="text-white">Sign-in method</strong>.</li>
+                    <li>Click <strong className="text-white">Add new provider</strong>, select <strong className="text-white">Email/Password</strong>, toggle to <strong className="text-white">Enable</strong>, and click <strong className="text-white">Save</strong>.</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-6" data-testid="register-form">
         <div>

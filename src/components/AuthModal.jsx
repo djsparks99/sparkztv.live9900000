@@ -8,6 +8,7 @@ export default function AuthModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState("login"); // "login" | "register"
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -22,6 +23,7 @@ export default function AuthModal() {
   useEffect(() => {
     const handleOpen = (e) => {
       setIsOpen(true);
+      setAuthError("");
       if (e.detail?.view) {
         setView(e.detail.view);
       }
@@ -32,6 +34,7 @@ export default function AuthModal() {
 
   const closeModal = () => {
     setIsOpen(false);
+    setAuthError("");
     // Clear states
     setLoginEmail("");
     setLoginPassword("");
@@ -44,12 +47,14 @@ export default function AuthModal() {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError("");
     const res = await login(loginEmail, loginPassword);
     setLoading(false);
     if (res.ok) {
       toast.success("Welcome back to the SPARKZ.TV network! ⚡");
       closeModal();
     } else {
+      setAuthError(res.error || "Login failed");
       toast.error(res.error || "Login failed");
     }
   };
@@ -57,6 +62,7 @@ export default function AuthModal() {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError("");
     const res = await register({
       email: regEmail,
       password: regPassword,
@@ -68,18 +74,21 @@ export default function AuthModal() {
       toast.success("Frequency claimed & username locked successfully! 💿");
       closeModal();
     } else {
+      setAuthError(res.error || "Registration failed");
       toast.error(res.error || "Registration failed");
     }
   };
 
   const handleOAuth = async (provider) => {
     setLoading(true);
+    setAuthError("");
     const res = await loginWithOAuth(provider);
     setLoading(false);
     if (res.ok) {
       toast.success(`Authenticated with ${provider}! ⚡`);
       closeModal();
     } else {
+      setAuthError(res.error || `${provider} authentication failed`);
       toast.error(res.error || `${provider} authentication failed`);
     }
   };
@@ -166,6 +175,33 @@ export default function AuthModal() {
             OR TERMINAL ACCESS
           </span>
         </div>
+
+        {authError && (
+          <div className="mb-5 rounded-none border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-200">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <p className="font-bold uppercase tracking-wider text-[9px] text-red-400 font-mono">// ERROR ENCOUNTERED</p>
+                <p className="leading-relaxed font-mono text-[10px] break-words">{authError}</p>
+                
+                {(authError.toLowerCase().includes("operation-not-allowed") || 
+                  authError.toLowerCase().includes("not allowed") || 
+                  authError.toLowerCase().includes("disabled") ||
+                  authError.toLowerCase().includes("configuration")) && (
+                  <div className="mt-3 pt-3 border-t border-red-500/20 text-[11px] leading-relaxed text-zinc-300 font-sans space-y-1.5">
+                    <p className="font-bold text-white">How to enable Email & Password Authentication:</p>
+                    <ol className="list-decimal pl-4 space-y-1.5 text-zinc-400 text-[10px]">
+                      <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#e5ff00] hover:underline font-semibold">Firebase Console</a>.</li>
+                      <li>Select your project: <strong className="text-white font-mono">ai-studio-applet-webapp-400d5</strong></li>
+                      <li>Navigate to <strong className="text-white">Authentication</strong> &gt; <strong className="text-white">Sign-in method</strong>.</li>
+                      <li>Click <strong className="text-white">Add new provider</strong>, select <strong className="text-white">Email/Password</strong>, toggle to <strong className="text-white">Enable</strong>, and click <strong className="text-white">Save</strong>.</li>
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Form area */}
         {view === "login" ? (

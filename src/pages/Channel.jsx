@@ -558,20 +558,23 @@ export default function Channel() {
       {/* DESKTOP VIEW: Side-by-Side Split View (Video + Profile details scroll on the left, Chat stays locked on the right) */}
       <div className="hidden lg:flex w-full h-full overflow-hidden items-stretch">
         {/* Left Column (Main Scrollable Content Area) */}
-        <div className="flex-1 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent flex flex-col">
+        <div className="flex-1 h-full overflow-y-auto no-scrollbar flex flex-col">
           
           {/* Unified Player + Metadata Panel: Sits completely flush directly underneath with zero gaps, spanning 100% width */}
           <div className="w-full bg-[#0e0e10] border-b border-[#1f1f23] flex flex-col shrink-0">
             {/* Video Player */}
-            <div className="w-full bg-black">
-              <HlsPlayer
-                playbackId={channel.playback_id}
-                isLive={isLive}
-                viewerCount={channel.viewer_count || 0}
-                isSubscriber={channel?.is_subscribed}
-                isPro={user?.is_pro}
-                username={channel?.username}
-              />
+            <div className="w-full bg-black flex justify-center items-center h-[calc(100vh-175px)] min-h-[300px] relative">
+              <div className="h-full max-w-full aspect-video">
+                <HlsPlayer
+                  playbackId={channel.playback_id}
+                  isLive={isLive}
+                  viewerCount={channel.viewer_count || 0}
+                  isSubscriber={channel?.is_subscribed}
+                  isPro={user?.is_pro}
+                  username={channel?.username}
+                  borderless={true}
+                />
+              </div>
             </div>
 
             {/* Bottom Avatar & Stream Info Container (separated by a border, zero margins/paddings between blocks, edge-to-edge) */}
@@ -629,7 +632,7 @@ export default function Channel() {
       </div>
 
       {/* MOBILE VIEW: Snap-Scrolling Dual-Fold View (Stacking Video & Mobile Chat with native feel) */}
-      <div className="lg:hidden w-full h-full overflow-y-auto snap-y snap-mandatory scroll-smooth bg-black">
+      <div className="lg:hidden w-full h-full overflow-y-auto no-scrollbar snap-y snap-mandatory scroll-smooth bg-black">
         {/* Fold 1: Video Player & Chat Interface (Fits exactly 100% height) */}
         <section className="snap-start h-full w-full flex flex-col overflow-hidden relative">
           {/* Top Sticky Video Player */}
@@ -641,6 +644,7 @@ export default function Channel() {
               isSubscriber={channel?.is_subscribed}
               isPro={user?.is_pro}
               username={channel?.username}
+              borderless={true}
             />
           </div>
 
@@ -659,7 +663,7 @@ export default function Channel() {
         </section>
 
         {/* Fold 2: Broadcaster Biography, Schedules, and Past Sessions */}
-        <section className="snap-start min-h-full w-full overflow-y-auto p-4 space-y-6 bg-black pb-24 relative">
+        <section className="snap-start min-h-full w-full overflow-y-auto no-scrollbar p-4 space-y-6 bg-black pb-24 relative">
           <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2 border-b border-zinc-800 pb-2">
             <span>// BROADCASTER BIO & SCHEDULES</span>
           </div>
