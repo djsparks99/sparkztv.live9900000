@@ -2,52 +2,20 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { db, auth } from "@/lib/firebase";
-import { doc, onSnapshot, collection, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { toast } from "sonner";
 import HlsPlayer from "@/components/HlsPlayer";
 import ChatPanel from "@/components/ChatPanel";
 import FollowButton from "@/components/FollowButton";
-import SubscribeButton from "@/components/SubscribeButton";
 import ShareButton from "@/components/ShareButton";
 import SessionList from "@/components/SessionList";
 import ScheduleDisplay from "@/components/ScheduleDisplay";
 import LiveDuration from "@/components/LiveDuration";
-import UserLocationTime from "@/components/UserLocationTime";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/lib/auth-context";
-import { Eye, ArrowLeft, User, Clock, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronRight, ChevronDown, Radio, Sparkles, X, Instagram, Globe, Volume2, Disc3, Music, Youtube, Shield } from "lucide-react";
+import { Eye, User, QrCode, Coins, Flag, Check, Gift, Crown, ChevronLeft, ChevronDown, Radio, Sparkles, X, Instagram, Volume2, Disc3, Music, Youtube, Shield } from "lucide-react";
 import { useLivepeerAutoPoll } from "@/hooks/useLivepeerAutoPoll";
 import { QRCodeSVG } from "qrcode.react";
-
-const OperationType = {
-  CREATE: "create",
-  UPDATE: "update",
-  DELETE: "delete",
-  LIST: "list",
-  GET: "get",
-  WRITE: "write",
-};
-
-function handleFirestoreError(error, operationType, path) {
-  const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export default function Channel() {
   const { username } = useParams();
@@ -96,160 +64,101 @@ export default function Channel() {
     }
 
     setIsSubmittingReport(true);
-    const pathForWrite = "moderation_reports";
     try {
-      const reportRef = doc(collection(db, pathForWrite));
-      const reportId = reportRef.id;
-
-      const reportData = {
-        id: reportId,
-        reporter_uid: user.uid,
-        reporter_username: user.username || "anonymous",
-        reported_stream_id: channel.playback_id || "unknown",
-        reported_username: channel.username,
+      await api.post(`/channels/${username}/report`, {
         reason: reportReason,
-        details: reportDetails.trim(),
-        status: "pending",
-        created_at: new Date().toISOString()
-      };
-
-      await setDoc(reportRef, reportData);
-      toast.success("Flag submitted successfully.", {
-        description: "Our moderation team has been notified."
+        details: reportDetails,
       });
+      toast.success("Thank you for your report. Our moderators will review this signal.");
       setIsReportModalOpen(false);
       setReportReason("");
       setReportDetails("");
-    } catch (error) {
-      toast.error("Failed to submit report. Please try again.");
-      handleFirestoreError(error, OperationType.WRITE, pathForWrite);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to submit report. Please try again.");
     } finally {
       setIsSubmittingReport(false);
     }
   };
 
-  useLivepeerAutoPoll(username);
-
-  const isLive = Boolean(channel?.is_live || channel?.isLive);
-
-  const channelImage = channel?.photo_url
-    ? fileUrl(channel.photo_url)
-    : channel?.banner_url
-    ? fileUrl(channel.banner_url)
-    : "/og-image.jpg";
-
-  const channelTitle = channel
-    ? `${channel.display_name || channel.username} (@${channel.username})`
-    : `Broadcaster ${username}`;
-
-  const channelDesc = channel
-    ? channel.stream_title || channel.bio || `Watch ${channel.display_name || channel.username} live on Sparkz.TV`
-    : `Watch underground live streams on Sparkz.TV`;
-
-  const channelKeywords = channel
-    ? `sparkztv, ${channel.username}, ${channel.display_name || ""}, live stream, ${channel.category || ""}, underground DJ, selector, music signal, sound system`
-    : `sparkztv, ${username}, live stream, underground radio, selector`;
+  useLivepeerAutoPoll();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [username]);
-
-  useEffect(() => {
+    setChannel(null);
     setNotFound(false);
-    let cancelled = false;
 
-    const load = async () => {
-      if (!username || username === "undefined" || username === "null") {
-        return;
-      }
+    let cancelled = false;
+    let unsub = null;
+    const cleanUsername = (username || "").toLowerCase().trim();
+
+    const loadChannel = async () => {
       try {
-        const { data } = await api.get(`/channels/${username}`, {
+        const { data } = await api.get(`/channels/${cleanUsername}`, {
           params: {
             uid: user?.uid || "",
             username: user?.username || ""
-          },
-          headers: {
-            "x-user-uid": user?.uid || "",
-            "x-username": user?.username || ""
           }
         });
-        if (!cancelled && data) {
-          let scheduleArray = [];
-          if (Array.isArray(data.schedules)) {
-            scheduleArray = data.schedules;
-          } else if (Array.isArray(data.schedule)) {
-            scheduleArray = data.schedule;
-          } else if (data.schedule_json) {
-            try {
-              scheduleArray = JSON.parse(data.schedule_json);
-            } catch (e) {}
-          } else if (data.schedule) {
-            scheduleArray = [data.schedule];
-          }
 
-          setChannel((prev) => ({
-            ...data,
-            schedule: scheduleArray.length > 0 ? scheduleArray : (prev?.schedule || []),
-            photo_url: data.photo_url || prev?.photo_url || null,
-          }));
+        if (cancelled) return;
+
+        if (!data) {
+          setNotFound(true);
+          return;
         }
-      } catch {
-        if (!cancelled) setNotFound(true);
+
+        setChannel(data);
+
+        // Real-time listener for live status and viewer changes
+        const targetDocId = data.channel_id || data.id || cleanUsername;
+        if (targetDocId) {
+          unsub = onSnapshot(
+            doc(db, "channels", targetDocId),
+            (docSnap) => {
+              if (cancelled) return;
+              if (docSnap.exists()) {
+                const fsData = docSnap.data();
+                if (fsData) {
+                  setChannel((prev) => {
+                    if (!prev) return prev;
+                    
+                    const updated = {
+                      ...prev,
+                      ...fsData,
+                      playback_id: fsData.playback_id || fsData.playbackId || prev.playback_id,
+                      is_live: fsData.is_live !== undefined ? fsData.is_live : (fsData.isLive !== undefined ? fsData.isLive : prev.is_live),
+                      isLive: fsData.is_live !== undefined ? fsData.is_live : (fsData.isLive !== undefined ? fsData.isLive : prev.isLive),
+                    };
+                    
+                    const fsSchedule = fsData.schedule || (fsData.schedule_json ? JSON.parse(fsData.schedule_json) : null);
+                    if (Array.isArray(fsSchedule) && fsSchedule.length > 0) {
+                      updated.schedule = fsSchedule;
+                    }
+                    
+                    return updated;
+                  });
+                }
+              }
+            },
+            (err) => {
+              console.warn("Firestore channel snapshot notice:", err);
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load channel from backend API:", err);
+        if (!cancelled) {
+          setNotFound(true);
+        }
       }
     };
-    load();
 
-    const targetDocId = username ? username.toLowerCase() : "";
-    const unsub = onSnapshot(
-      doc(db, "channels", targetDocId),
-      (docSnap) => {
-        if (docSnap.exists() && !cancelled) {
-          const fsData = docSnap.data();
-          let fsSchedule = fsData.schedule;
-          if (!Array.isArray(fsSchedule) && fsData.schedule_json) {
-            try {
-              fsSchedule = JSON.parse(fsData.schedule_json);
-            } catch (e) {}
-          }
-          setChannel((prev) => {
-            if (!prev) {
-              return {
-                ...fsData,
-                schedule: Array.isArray(fsSchedule) ? fsSchedule : [],
-              };
-            }
-
-            const merged = { ...prev };
-            
-            for (const key of Object.keys(fsData)) {
-              if (fsData[key] !== null && fsData[key] !== undefined) {
-                merged[key] = fsData[key];
-              }
-            }
-
-            if (!merged.photo_url && prev.photo_url) {
-              merged.photo_url = prev.photo_url;
-            }
-
-            const finalSchedule = (Array.isArray(fsSchedule) && fsSchedule.length > 0)
-              ? fsSchedule
-              : (prev.schedule || []);
-            
-            merged.schedule = finalSchedule;
-            return merged;
-          });
-        }
-      },
-      (err) => {
-        console.warn("Firestore channel snapshot notice:", err);
-      }
-    );
+    loadChannel();
 
     return () => {
       cancelled = true;
-      unsub();
+      if (unsub) unsub();
     };
-  }, [username, user?.uid]);
+  }, [username, user?.uid, user?.username]);
 
   useEffect(() => {
     let cancelled = false;
@@ -294,50 +203,414 @@ export default function Channel() {
   }
 
   const ownChannel = user?.username === channel.username;
+  const isLive = Boolean(channel.is_live || channel.isLive);
 
-  return (
-    <div className="mx-auto max-w-full px-4 lg:px-8 pt-6 pb-24 sm:pb-28 lg:pb-32" data-testid={`channel-page-${username}`}>
-      <SEO
-        title={channelTitle}
-        description={channelDesc}
-        image={channelImage}
-        isLive={isLive}
-        category={channel?.category}
-        type="profile"
-        keywords={channelKeywords}
-      />
+  const channelTitle = isLive
+    ? `🔴 LIVE: ${channel.stream_title || "Underground Radio"} - SPARKZ.TV`
+    : `@${channel.username || username}'s Broadcast Station - SPARKZ.TV`;
 
+  const channelDesc = channel.bio || `Tune into high-fidelity live sets from @${channel.username} on SPARKZ.TV.`;
+  
+  const avatarUrl = channel.photo_url || 
+                    channel.photoUrl || 
+                    channel.avatar_url || 
+                    channel.avatar || 
+                    channel.profile_image || 
+                    channel.broadcaster_avatar || 
+                    channel.user?.avatar_url || 
+                    channel.user?.photo_url || 
+                    channel.user?.photoUrl || 
+                    channel.user?.avatar ||
+                    channel.user?.profile_image ||
+                    channel.user?.broadcaster_avatar;
 
-      {/* Row 1: Player & Chat Panel */}
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch mb-6">
-        {/* Left Column: Player and Mobile Chat */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
-          <HlsPlayer
-            playbackId={channel.playback_id}
-            isLive={isLive}
-            viewerCount={channel.viewer_count || 0}
-            isSubscriber={channel?.is_subscribed}
-            isPro={user?.is_pro}
-            username={channel?.username}
-          />
-          
-          {/* MOBILE CHAT PLACEMENT: Sits directly under the video player on mobile views */}
-          <div className="block lg:hidden w-full border border-[#27272a] bg-[#0e0e10]">
-            <div className="h-[400px] sm:h-[485px]">
-              <ChatPanel username={channel.username} />
+  const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
+
+  // Render Metadata Bar Component
+  const metadataBar = (
+    <div className="border border-[#27272a] bg-[#0e0e10] py-4 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Left Column: Avatar + Profile details */}
+        <div className="flex items-center gap-4 min-w-0 lg:flex-1">
+          <div className="relative h-12 w-12 md:h-14 md:w-14 flex-shrink-0 flex items-center justify-center">
+            {/* Spinning border container */}
+            <div className="absolute inset-0 rounded-full overflow-hidden bg-zinc-900">
+              {isLive && (
+                <div 
+                  className="absolute inset-[-50%] animate-[spin_2s_linear_infinite]"
+                  style={{
+                    background: "conic-gradient(from 0deg, transparent 50%, #ff0000 80%, #ff5c5c 95%, #ff0000 100%)"
+                  }}
+                />
+              )}
+            </div>
+            
+            {/* Inner image container */}
+            <div className="absolute inset-[2px] rounded-full overflow-hidden bg-[#141416] flex items-center justify-center z-10">
+              <img 
+                src={resolvedAvatar || DEFAULT_AVATAR} 
+                alt={channel.username} 
+                className="h-full w-full object-cover rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            {/* Live/Offline status indicator on avatar bottom-center */}
+            {isLive ? (
+              <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-red-600 text-[8px] font-black tracking-widest text-white px-1.5 py-0.5 border border-red-500 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                LIVE
+              </span>
+            ) : (
+              <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-zinc-800 text-[8px] font-black tracking-widest text-zinc-400 px-1.5 py-0.5 border border-zinc-700 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                OFF
+              </span>
+            )}
+          </div>
+
+          {/* Text Area */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <h1 className="font-display text-base font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1.5">
+                <span>@{channel.username || username}</span>
+                <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#9146ff] text-white" title="Verified Sparkz Partner">
+                  <Check className="h-2.5 w-2.5 stroke-[4]" />
+                </span>
+                {(() => {
+                  const isCreator = (channel.username || "").toLowerCase() === "djsparkz";
+                  const viewCount = Number(channel.views || 0);
+                  const meetsViewsThreshold = viewCount >= 3000;
+                  
+                  if (isCreator) {
+                    return (
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#e5ff00] text-black" title="Platform Creator & Founder">
+                        <Shield className="h-3 w-3 fill-black stroke-[2]" />
+                      </span>
+                    );
+                  } else if (meetsViewsThreshold) {
+                    return (
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-zinc-800 text-[#e5ff00] border border-zinc-700" title={`Elite Broadcaster (${viewCount.toLocaleString()} Views)`}>
+                        <Shield className="h-2.5 w-2.5 fill-[#e5ff00] stroke-[2]" />
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </h1>
+              
+              {isLive && (
+                <div className="flex items-center gap-2">
+                  <span className="live-badge !py-0.5 !px-1.5 text-[8px] font-bold uppercase tracking-wider bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20 flex items-center h-5">
+                    <span className="dot live-dot bg-[#e5ff00]" /> LIVE
+                  </span>
+                  
+                  {/* Inline live viewer count and uptime directly next to badge */}
+                  <div className="hidden lg:flex items-center gap-2 font-mono text-[10px] font-bold text-zinc-400 bg-zinc-900/80 px-2 py-0.5 border border-zinc-800/80 rounded h-5" data-testid="live-viewer-uptime">
+                    <div className="flex items-center gap-1 text-[#ff5c5c]">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{channel.viewer_count || 0}</span>
+                    </div>
+                    <span className="text-zinc-600">|</span>
+                    <div className="text-zinc-300">
+                      {channel.stream_started_at ? (
+                        <LiveDuration startedAt={channel.stream_started_at} />
+                      ) : (
+                        "00:00:00"
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stream Title / Custom description */}
+            <h2 className="font-sans text-xs md:text-sm font-semibold leading-snug text-zinc-200 mb-1">
+              {channel.stream_title || "Welcome to my underground broadcast"}
+            </h2>
+
+            {/* Metadata row */}
+            <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono text-zinc-500">
+              {channel.category && (
+                <Link to="/browse" className="text-[#bf94ff] hover:underline font-bold uppercase tracking-wider">
+                  {channel.category}
+                </Link>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Desktop Collapsible Chat (Matches player height perfectly) */}
+        {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
+        <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end lg:flex-1">
+          <FollowButton
+            username={channel.username}
+            isFollowing={channel.is_following}
+            followerCount={channel.follower_count}
+            ownChannel={ownChannel}
+            onChange={(res) =>
+              setChannel((prev) => ({
+                ...prev,
+                is_following: res.following,
+                follower_count: res.follower_count,
+              }))
+            }
+          />
+
+          <button
+            onClick={() => setIsManageSubOpen(true)}
+            className="flex items-center gap-1.5 border border-[#bf94ff] bg-[#bf94ff]/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#bf94ff] hover:bg-[#bf94ff] hover:text-black transition-all"
+            title="Subscribe or Manage Channel Perks"
+          >
+            <Crown className="h-3.5 w-3.5" />
+            <span>{channel?.is_subscribed ? "SUBSCRIBED" : "SUBSCRIBE"}</span>
+          </button>
+
+          <button
+            onClick={() => setIsGiftModalOpen(true)}
+            className="flex items-center gap-1.5 border border-zinc-700 bg-black px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:border-[#bf94ff] hover:text-[#bf94ff] transition-all"
+            title="Gift a Sub to another viewer"
+          >
+            <Gift className="h-3.5 w-3.5" />
+            <span>GIFT SUB</span>
+          </button>
+
+          <Link
+            to="/payouts?buy=true"
+            data-testid="channel-buy-bits-btn"
+            className="flex items-center gap-1.5 border border-[#27272a] bg-black px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-zinc-900 transition-all"
+            title="Purchase Vinyl Bits to Support DJ"
+          >
+            <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
+            <span>BUY BITS</span>
+          </Link>
+
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="btn-ghost inline-flex items-center gap-1.5 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-1.5 !px-2.5 border border-zinc-800"
+            title="Report this broadcast"
+          >
+            <Flag className="h-3.5 w-3.5" />
+            <span className="font-mono text-[10px] uppercase tracking-wider">REPORT</span>
+          </button>
+        </div>
+      </div>
+
+      {/* BOTTOM MUSIC GENRE TAG CONTAINER */}
+      {channel.tags && channel.tags.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-[#27272a]/30 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">// GENRE TARGETS:</div>
+          <div className="flex flex-wrap gap-1">
+            {channel.tags.map((tag, idx) => (
+              <Link
+                key={idx}
+                to={`/browse?search=${encodeURIComponent(tag)}`}
+                className="inline-flex items-center px-2 py-0.5 bg-zinc-900 hover:bg-[#e5ff00] border border-zinc-800 hover:border-[#e5ff00] text-[10px] font-mono text-zinc-400 hover:text-black transition-all rounded-sm"
+              >
+                #{tag.toUpperCase()}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BIO & SOCIAL LINKS ROW */}
+      {(channel.bio || (channel.socials && Object.values(channel.socials).some(Boolean))) && (
+        <div className="mt-4 pt-3 border-t border-[#27272a]/30 flex flex-col md:flex-row md:items-start justify-between gap-4">
+          {/* Bio block */}
+          {channel.bio && (
+            <div className="flex-1 min-w-0">
+              <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1">// BIO</div>
+              <p className="font-mono text-xs text-zinc-300 leading-relaxed max-w-3xl whitespace-pre-wrap">
+                {channel.bio}
+              </p>
+            </div>
+          )}
+
+          {/* Social Links block */}
+          {channel.socials && Object.values(channel.socials).some(Boolean) && (
+            <div className="flex flex-col gap-1 min-w-[200px] md:items-end">
+              <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1 md:text-right">// LINKS</div>
+              <div className="flex flex-wrap gap-2 items-center justify-start md:justify-end font-mono text-[10px]">
+                {channel.socials.soundcloud && (
+                  <a
+                    href={channel.socials.soundcloud.startsWith("http") ? channel.socials.soundcloud : `https://${channel.socials.soundcloud}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="SoundCloud"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff5500] hover:border-[#ff5500]/40 transition-all uppercase"
+                  >
+                    <Volume2 className="h-3.5 w-3.5" />
+                    <span>SOUNDCLOUD</span>
+                  </a>
+                )}
+                {channel.socials.mixcloud && (
+                  <a
+                    href={channel.socials.mixcloud.startsWith("http") ? channel.socials.mixcloud : `https://${channel.socials.mixcloud}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Mixcloud"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#00e6ff] hover:border-[#00e6ff]/40 transition-all uppercase"
+                  >
+                    <Disc3 className="h-3.5 w-3.5" />
+                    <span>MIXCLOUD</span>
+                  </a>
+                )}
+                {channel.socials.instagram && (
+                  <a
+                    href={channel.socials.instagram.startsWith("http") ? channel.socials.instagram : `https://${channel.socials.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Instagram"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#e1306c] hover:border-[#e1306c]/40 transition-all uppercase"
+                  >
+                    <Instagram className="h-3.5 w-3.5" />
+                    <span>INSTAGRAM</span>
+                  </a>
+                )}
+                {channel.socials.spotify && (
+                  <a
+                    href={channel.socials.spotify.startsWith("http") ? channel.socials.spotify : `https://${channel.socials.spotify}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Spotify"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#1db954] hover:border-[#1db954]/40 transition-all uppercase"
+                  >
+                    <Music className="h-3.5 w-3.5" />
+                    <span>SPOTIFY</span>
+                  </a>
+                )}
+                {channel.socials.youtube && (
+                  <a
+                    href={channel.socials.youtube.startsWith("http") ? channel.socials.youtube : `https://${channel.socials.youtube}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="YouTube"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff0000] hover:border-[#ff0000]/40 transition-all uppercase"
+                  >
+                    <Youtube className="h-3.5 w-3.5" />
+                    <span>YOUTUBE</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const streamInfoCard = (
+    <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      <div className="label-caps">// STREAM INFO</div>
+      <dl className="mt-4 space-y-3 font-mono text-xs">
+        <Row label="STATUS">{isLive ? "LIVE" : "OFF AIR"}</Row>
+        <Row label="CATEGORY">{channel.category}</Row>
+        <Row label="VIEWERS">
+          <span className="inline-flex items-center gap-1.5">
+            <Eye className="h-3.5 w-3.5 text-[#e5ff00]" />
+            <span>{channel.viewer_count || 0}</span>
+          </span>
+        </Row>
+        <Row label="PLAYBACK ID" mono>
+          {channel.playback_id}
+        </Row>
+      </dl>
+    </div>
+  );
+
+  const qrCodeCard = (
+    <div className="border border-[#27272a] bg-[#0e0e10] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] h-full flex flex-col justify-between" data-testid="channel-qr-card">
+      <div className="flex items-center gap-2">
+        <QrCode className="h-4 w-4 text-[#e5ff00]" />
+        <div className="label-caps mb-0">// CHANNEL QR CODE</div>
+      </div>
+
+      <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-zinc-400">
+        Scan or share to tune into <code className="text-[#e5ff00]">@{channel.username}</code>.
+      </p>
+
+      <div className="mt-3 flex flex-col items-center justify-center border border-dashed border-[#27272a] bg-black p-3">
+        <div className="rounded bg-white p-1.5 shadow-lg">
+          <QRCodeSVG
+            value={`${window.location.origin}/channel/${channel.username}`}
+            size={95}
+            bgColor="#ffffff"
+            fgColor="#000000"
+            level="M"
+          />
+        </div>
+        <span className="mt-2 font-mono text-[9px] text-zinc-500 uppercase tracking-widest truncate max-w-[180px]">
+          {channel.username}
+        </span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full h-full bg-black text-white relative flex flex-col overflow-hidden" data-testid={`channel-page-${username}`}>
+      <SEO
+        title={channelTitle}
+        description={channelDesc}
+        image={resolvedAvatar || DEFAULT_AVATAR}
+        isLive={isLive}
+        category={channel?.category}
+        type="profile"
+      />
+
+      {/* DESKTOP VIEW: Side-by-Side Split View (Video + Profile details scroll on the left, Chat stays locked on the right) */}
+      <div className="hidden lg:flex w-full h-full overflow-hidden items-stretch">
+        {/* Left Column (Main Scrollable Content Area) */}
+        <div className="flex-1 h-full overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+          <div className="w-full max-w-[1150px] xl:max-w-[1300px] mx-auto space-y-6 pb-12">
+            {/* Player block */}
+            <div className="w-full bg-black border border-[#1f1f23] shadow-2xl">
+              <HlsPlayer
+                playbackId={channel.playback_id}
+                isLive={isLive}
+                viewerCount={channel.viewer_count || 0}
+                isSubscriber={channel?.is_subscribed}
+                isPro={user?.is_pro}
+                username={channel?.username}
+              />
+            </div>
+
+            {/* Metadata bar */}
+            {metadataBar}
+
+            {/* Split row for schedules, past sessions, and cards */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+              {/* Main content subcolumn */}
+              <div className="xl:col-span-2 space-y-6">
+                <ScheduleDisplay
+                  schedule={channel.schedule}
+                  username={channel.username}
+                  isOwner={ownChannel}
+                  onScheduleUpdated={(updatedSchedules) => {
+                    setChannel((prev) => ({
+                      ...prev,
+                      schedule: updatedSchedules,
+                    }));
+                  }}
+                />
+                <SessionList username={channel.username} />
+              </div>
+
+              {/* Side cards subcolumn */}
+              <aside className="space-y-6">
+                {streamInfoCard}
+                {qrCodeCard}
+              </aside>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (Locked Sidebar Chat Panel - Matches exact height, doesn't scroll with content) */}
         {!isChatCollapsed ? (
-          <aside className="hidden lg:flex w-[320px] xl:w-[360px] flex-col shrink-0 transition-all duration-300">
+          <aside className="w-[320px] xl:w-[360px] h-full flex flex-col border-l border-[#1f1f23] bg-[#0e0e10] shrink-0">
             <ChatPanel username={channel.username} onCollapse={toggleChatCollapse} />
           </aside>
         ) : (
           <button
             onClick={toggleChatCollapse}
-            className="hidden lg:flex flex-col items-center justify-start py-4 w-10 shrink-0 bg-[#0e0e10] border border-[#27272a] text-zinc-400 hover:text-[#e5ff00] hover:border-[#e5ff00]/40 transition-all gap-6 cursor-pointer select-none"
+            className="flex flex-col items-center justify-start py-6 w-10 shrink-0 bg-[#0e0e10] border-l border-[#1f1f23] text-zinc-400 hover:text-[#e5ff00] hover:border-[#e5ff00]/40 transition-all gap-6 cursor-pointer select-none"
             title="Expand Chat"
           >
             <ChevronLeft className="h-5 w-5 text-[#e5ff00] animate-pulse" />
@@ -348,383 +621,70 @@ export default function Channel() {
         )}
       </div>
 
-      {/* Row 2: Metadata Bar & Mobile Chat */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-6">
-        {/* Left Column: Metadata Bar (Aligned with player) */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
-          {/* CHANNEL METADATA BAR - Directly under the player/chat row */}
-        {(() => {
-          const avatarUrl = channel?.photo_url || 
-                            channel?.photoUrl || 
-                            channel?.avatar_url || 
-                            channel?.avatar || 
-                            channel?.profile_image || 
-                            channel?.broadcaster_avatar || 
-                            channel?.user?.avatar_url || 
-                            channel?.user?.photo_url || 
-                            channel?.user?.photoUrl || 
-                            channel?.user?.avatar ||
-                            channel?.user?.profile_image ||
-                            channel?.user?.broadcaster_avatar;
-
-          const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
-
-          const initials = (() => {
-            const name = channel?.display_name || channel?.username || username || "?";
-            const cleanName = typeof name === "string" ? name.trim() : "?";
-            const parts = cleanName.split(/\s+/);
-            if (parts.length >= 2 && parts[0] && parts[1]) {
-              return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
-            }
-            return cleanName.slice(0, 2).toUpperCase();
-          })();
-
-          return (
-            <div className="border border-[#27272a] bg-[#0e0e10] py-2 px-3 md:py-2.5 md:px-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                {/* Left Column: Avatar + Profile details */}
-                <div className="flex items-center gap-3 min-w-0 lg:flex-1">
-                  {/* Spherically-bounded avatar container with Red Night Rider border animation when live */}
-                  <div className="relative h-11 w-11 md:h-13 md:w-13 flex-shrink-0 flex items-center justify-center">
-                    {/* Spinning border container */}
-                    <div className="absolute inset-0 rounded-full overflow-hidden bg-zinc-900">
-                      {isLive && (
-                        <div 
-                          className="absolute inset-[-50%] animate-[spin_2s_linear_infinite]"
-                          style={{
-                            background: "conic-gradient(from 0deg, transparent 50%, #ff0000 80%, #ff5c5c 95%, #ff0000 100%)"
-                          }}
-                        />
-                      )}
-                    </div>
-                    
-                    {/* Inner image container */}
-                    <div className="absolute inset-[2px] rounded-full overflow-hidden bg-[#141416] flex items-center justify-center z-10">
-                      <img 
-                        src={resolvedAvatar || DEFAULT_AVATAR} 
-                        alt={channel.username} 
-                        className="h-full w-full object-cover rounded-full"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-
-                    {/* Live/Offline status indicator on avatar bottom-center */}
-                    {isLive ? (
-                      <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-red-600 text-[8px] font-black tracking-widest text-white px-1 py-0.5 border border-red-500 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        LIVE
-                      </span>
-                    ) : (
-                      <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 bg-zinc-800 text-[8px] font-black tracking-widest text-zinc-400 px-1 py-0.5 border border-zinc-700 rounded-sm scale-90 whitespace-nowrap shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        OFF
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Text Area */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <h1 className="font-display text-sm font-black tracking-tight text-white hover:text-[#e5ff00] transition-colors flex items-center gap-1.5">
-                        <span>@{channel.username || username}</span>
-                        <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-[#9146ff] text-white" title="Verified Sparkz Partner">
-                          <Check className="h-2 w-2 stroke-[4]" />
-                        </span>
-                        {/* Shield Badge */}
-                        {(() => {
-                          const isCreator = (channel.username || "").toLowerCase() === "djsparkz";
-                          const viewCount = Number(channel.views || 0);
-                          const meetsViewsThreshold = viewCount >= 3000;
-                          
-                          if (isCreator) {
-                            return (
-                              <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-[#e5ff00] text-black" title="Platform Creator & Founder">
-                                <Shield className="h-2.5 w-2.5 fill-black stroke-[2]" />
-                              </span>
-                            );
-                          } else if (meetsViewsThreshold) {
-                            return (
-                              <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-zinc-800 text-[#e5ff00] border border-zinc-700" title={`Elite Broadcaster (${viewCount.toLocaleString()} Views)`}>
-                                <Shield className="h-2 w-2.5 fill-[#e5ff00] stroke-[2]" />
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </h1>
-                      
-                      {isLive && (
-                        <div className="flex items-center gap-2">
-                          <span className="live-badge !py-0 !px-1 text-[8px] font-bold uppercase tracking-wider bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20 flex items-center h-4">
-                            <span className="dot live-dot bg-[#e5ff00]" /> LIVE
-                          </span>
-                          
-                          {/* Inline live viewer count and uptime directly next to badge */}
-                          <div className="hidden lg:flex items-center gap-2 font-mono text-[10px] font-bold text-zinc-400 bg-zinc-900/80 px-1.5 py-0.5 border border-zinc-800/80 rounded h-4" data-testid="live-viewer-uptime">
-                            <div className="flex items-center gap-0.5 text-[#ff5c5c]">
-                              <User className="h-3 w-3" />
-                              <span>{channel.viewer_count || 0}</span>
-                            </div>
-                            <span className="text-zinc-600">|</span>
-                            <div className="text-zinc-300">
-                              {channel.stream_started_at ? (
-                                <LiveDuration startedAt={channel.stream_started_at} />
-                              ) : (
-                                "00:00:00"
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stream Title / Custom description */}
-                    <h2 className="font-sans text-xs font-semibold leading-snug text-zinc-200 mb-0.5">
-                      {channel.stream_title || "Welcome to my underground broadcast"}
-                    </h2>
-
-                    {/* Metadata row */}
-                    <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono text-zinc-500">
-                      {channel.category && (
-                        <Link to="/browse" className="text-[#bf94ff] hover:underline font-bold uppercase tracking-wider">
-                          {channel.category}
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Interactive Buttons (Follow, Manage Sub, Gift Sub, buy bits) */}
-                <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end lg:flex-1">
-                  <FollowButton
-                    username={channel.username}
-                    isFollowing={channel.is_following}
-                    followerCount={channel.follower_count}
-                    ownChannel={ownChannel}
-                    onChange={(res) =>
-                      setChannel((prev) => ({
-                        ...prev,
-                        is_following: res.following,
-                        follower_count: res.follower_count,
-                      }))
-                    }
-                  />
-
-                  <Link
-                    to="/payouts?buy=true"
-                    data-testid="channel-buy-bits-btn"
-                    className="flex items-center gap-1 border border-[#27272a] bg-black px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-[#e5ff00] hover:border-[#e5ff00] hover:bg-zinc-900 transition-all"
-                    title="Purchase Vinyl Bits to Support DJ"
-                  >
-                    <Coins className="h-3.5 w-3.5 text-[#e5ff00] animate-pulse" />
-                    <span>BUY BITS</span>
-                  </Link>
-
-                  <ShareButton
-                    username={channel.username}
-                    streamTitle={channel.stream_title}
-                  />
-                  
-                  <button
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="btn-ghost inline-flex items-center gap-1 text-zinc-400 hover:text-red-400 hover:border-red-400/30 transition-colors !py-1 !px-2"
-                    title="Report this broadcast"
-                  >
-                    <Flag className="h-3 w-3" />
-                    <span className="font-mono text-[10px] uppercase tracking-wider">REPORT</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* BOTTOM MUSIC GENRE TAG CONTAINER - Under the player metadata, display their own genre music tags */}
-              {channel.tags && channel.tags.length > 0 && (
-                <div className="mt-2.5 pt-2 border-t border-[#27272a]/30 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">// GENRE TARGETS:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {channel.tags.map((tag, idx) => (
-                      <Link
-                        key={idx}
-                        to={`/browse?search=${encodeURIComponent(tag)}`}
-                        className="inline-flex items-center px-2 py-0.5 bg-zinc-900 hover:bg-[#e5ff00] border border-zinc-800 hover:border-[#e5ff00] text-[10px] font-mono text-zinc-400 hover:text-black transition-all rounded-sm"
-                      >
-                        #{tag.toUpperCase()}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* BIO & SOCIAL LINKS ROW */}
-              {(channel.bio || (channel.socials && Object.values(channel.socials).some(Boolean))) && (
-                <div className="mt-2.5 pt-2.5 border-t border-[#27272a]/30 flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  {/* Bio block */}
-                  {channel.bio && (
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1">// BIO</div>
-                      <p className="font-mono text-xs text-zinc-300 leading-relaxed max-w-3xl whitespace-pre-wrap">
-                        {channel.bio}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Social Links block */}
-                  {channel.socials && Object.values(channel.socials).some(Boolean) && (
-                    <div className="flex flex-col gap-1 min-w-[200px] md:items-end">
-                      <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1 md:text-right">// LINKS</div>
-                      <div className="flex flex-wrap gap-2 items-center justify-start md:justify-end font-mono text-[10px]">
-                        {channel.socials.soundcloud && (
-                          <a
-                            href={channel.socials.soundcloud.startsWith("http") ? channel.socials.soundcloud : `https://${channel.socials.soundcloud}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="SoundCloud"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff5500] hover:border-[#ff5500]/40 transition-all uppercase"
-                          >
-                            <Volume2 className="h-3.5 w-3.5" />
-                            <span>SOUNDCLOUD</span>
-                          </a>
-                        )}
-                        {channel.socials.mixcloud && (
-                          <a
-                            href={channel.socials.mixcloud.startsWith("http") ? channel.socials.mixcloud : `https://${channel.socials.mixcloud}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Mixcloud"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#00e6ff] hover:border-[#00e6ff]/40 transition-all uppercase"
-                          >
-                            <Disc3 className="h-3.5 w-3.5" />
-                            <span>MIXCLOUD</span>
-                          </a>
-                        )}
-                        {channel.socials.instagram && (
-                          <a
-                            href={channel.socials.instagram.startsWith("http") ? channel.socials.instagram : `https://${channel.socials.instagram}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Instagram"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#e1306c] hover:border-[#e1306c]/40 transition-all uppercase"
-                          >
-                            <Instagram className="h-3.5 w-3.5" />
-                            <span>INSTAGRAM</span>
-                          </a>
-                        )}
-                        {channel.socials.spotify && (
-                          <a
-                            href={channel.socials.spotify.startsWith("http") ? channel.socials.spotify : `https://${channel.socials.spotify}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Spotify"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#1db954] hover:border-[#1db954]/40 transition-all uppercase"
-                          >
-                            <Music className="h-3.5 w-3.5" />
-                            <span>SPOTIFY</span>
-                          </a>
-                        )}
-                        {channel.socials.youtube && (
-                          <a
-                            href={channel.socials.youtube.startsWith("http") ? channel.socials.youtube : `https://${channel.socials.youtube}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="YouTube"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#18181d] border border-zinc-800/80 text-zinc-400 hover:text-[#ff0000] hover:border-[#ff0000]/40 transition-all uppercase"
-                          >
-                            <Youtube className="h-3.5 w-3.5" />
-                            <span>YOUTUBE</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-        </div>
-
-        {/* Right Column: QR Code Card under the chat (matches its width/styling and is uniform) */}
-        {!isChatCollapsed ? (
-          <div className="hidden lg:block w-[320px] xl:w-[360px] shrink-0">
-            {/* Channel QR Code Card */}
-            <div className="border border-[#27272a] bg-[#0e0e10] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] h-full flex flex-col justify-between" data-testid="channel-qr-card">
-              <div className="flex items-center gap-2">
-                <QrCode className="h-4 w-4 text-[#e5ff00]" />
-                <div className="label-caps mb-0">// CHANNEL QR CODE</div>
-              </div>
-
-              <p className="mt-1 font-mono text-[10px] leading-relaxed text-zinc-400">
-                Scan or share to tune into <code className="text-[#e5ff00]">@{channel.username}</code>.
-              </p>
-
-              <div className="mt-2.5 flex flex-col items-center justify-center border border-dashed border-[#27272a] bg-black p-2">
-                <div className="rounded bg-white p-1.5 shadow-lg">
-                  <QRCodeSVG
-                    value={`${window.location.origin}/channel/${channel.username}`}
-                    size={90}
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    level="M"
-                  />
-                </div>
-                <span className="mt-1.5 font-mono text-[9px] text-zinc-500 uppercase tracking-widest truncate max-w-[180px]">
-                  {channel.username}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="hidden lg:block w-10 shrink-0" />
-        )}
-      </div>
-
-      {/* Row 3: Secondary Metadata (Schedule & Previous Sessions) & Right Column Cards */}
-      <div className="flex flex-col lg:flex-row gap-6 mt-6">
-        {/* Left Column (Aligns perfectly with Player and Metadata Bar) */}
-        <div className="flex-1 min-w-0 flex flex-col gap-6">
-          {/* Schedule */}
-          <div>
-            <ScheduleDisplay
-              schedule={channel.schedule}
-              username={channel.username}
-              isOwner={ownChannel}
-              onScheduleUpdated={(updatedSchedules) => {
-                setChannel((prev) => ({
-                  ...prev,
-                  schedule: updatedSchedules,
-                }));
-              }}
+      {/* MOBILE VIEW: Snap-Scrolling Dual-Fold View (Stacking Video & Mobile Chat with native feel) */}
+      <div className="lg:hidden w-full h-full overflow-y-auto snap-y snap-mandatory scroll-smooth bg-black">
+        {/* Fold 1: Video Player & Chat Interface (Fits exactly 100% height) */}
+        <section className="snap-start h-full w-full flex flex-col overflow-hidden relative">
+          {/* Top Sticky Video Player */}
+          <div className="w-full bg-black shrink-0">
+            <HlsPlayer
+              playbackId={channel.playback_id}
+              isLive={isLive}
+              viewerCount={channel.viewer_count || 0}
+              isSubscriber={channel?.is_subscribed}
+              isPro={user?.is_pro}
+              username={channel?.username}
             />
           </div>
 
-          {/* Past sets */}
-          <div>
-            <SessionList username={channel.username} />
+          {/* Interactive Chat Panel (Takes up remaining viewport height) */}
+          <div className="flex-1 min-h-0 bg-[#0e0e10] border-t border-[#1f1f23] flex flex-col relative z-10">
+            <ChatPanel username={channel.username} />
           </div>
-        </div>
 
-        {/* Right Column (Aligns perfectly with Chat Panel / QR code card) */}
-        <aside className={`${isChatCollapsed ? "lg:w-10" : "lg:w-[320px] xl:w-[360px]"} hidden lg:flex shrink-0 flex-col gap-4`}>
-          {!isChatCollapsed ? (
-            <div className="border border-[#27272a] bg-[#0e0e10] p-4 md:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
-              <div className="label-caps">// STREAM INFO</div>
-              <dl className="mt-4 space-y-3 font-mono text-xs">
-                <Row label="STATUS">{isLive ? "LIVE" : "OFF AIR"}</Row>
-                <Row label="CATEGORY">{channel.category}</Row>
-                <Row label="VIEWERS">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Eye className="h-3.5 w-3.5 text-[#e5ff00]" />
-                    <span>{channel.viewer_count || 0}</span>
-                  </span>
-                </Row>
-                <Row label="PLAYBACK ID" mono>
-                  {channel.playback_id}
-                </Row>
-              </dl>
-            </div>
-          ) : (
-            <div className="hidden lg:block w-10 shrink-0" />
-          )}
-        </aside>
+          {/* Simple overlay suggestion prompt to swipe */}
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1 bg-black/75 px-3 py-1 border border-zinc-800/80 rounded shadow-md">
+            <ChevronDown className="h-3.5 w-3.5 text-[#e5ff00] animate-bounce" />
+            <span className="font-mono text-[8px] font-black uppercase tracking-widest text-zinc-400">
+              SWIPE DOWN FOR INFO
+            </span>
+          </div>
+        </section>
+
+        {/* Fold 2: Broadcaster Biography, Schedules, and Past Sessions */}
+        <section className="snap-start min-h-full w-full overflow-y-auto p-4 space-y-6 bg-black pb-24 relative">
+          <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2 border-b border-zinc-800 pb-2">
+            <span>// BROADCASTER BIO & SCHEDULES</span>
+          </div>
+
+          {/* Metadata bar */}
+          {metadataBar}
+
+          {/* Stream info & QR code */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {streamInfoCard}
+            <div>{qrCodeCard}</div>
+          </div>
+
+          {/* Schedule display */}
+          <ScheduleDisplay
+            schedule={channel.schedule}
+            username={channel.username}
+            isOwner={ownChannel}
+            onScheduleUpdated={(updatedSchedules) => {
+              setChannel((prev) => ({
+                ...prev,
+                schedule: updatedSchedules,
+              }));
+            }}
+          />
+
+          {/* Session list */}
+          <SessionList username={channel.username} />
+        </section>
       </div>
 
+      {/* REPORT MODAL */}
       {isReportModalOpen && (
         <div
           data-testid="report-modal"
@@ -733,7 +693,7 @@ export default function Channel() {
           <div className="w-full max-w-md border border-[#27272a] bg-[#0e0e10] p-6 shadow-2xl sm:p-8 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-500">
               <Flag className="h-4 w-4 text-red-500" />
-              // REPORT BROADCAST
+              <span>// REPORT BROADCAST</span>
             </div>
             <h2 className="mt-2 font-display text-2xl font-black uppercase text-white sm:text-3xl">
               COMMUNITY FLAG

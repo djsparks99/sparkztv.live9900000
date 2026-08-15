@@ -20,6 +20,17 @@ export default function HlsPlayer({
   const playerRef = useRef(null);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
+  const ivsPlayerRef = useRef(null);
+  const [ivsLoaded, setIvsLoaded] = useState(!!window.IVSPlayer);
+
+  useEffect(() => {
+    if (window.IVSPlayer) return;
+    const script = document.createElement("script");
+    script.src = "https://player.live-video.net/1.24.0/amazon-ivs-player.min.js";
+    script.async = true;
+    script.onload = () => setIvsLoaded(true);
+    document.body.appendChild(script);
+  }, []);
 
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isMuted, setIsMuted] = useState(muted);
@@ -124,6 +135,44 @@ export default function HlsPlayer({
     if (offline || !hlsUrl || !videoRef.current) return;
 
     const video = videoRef.current;
+    const isIvsStream = hlsUrl.includes("live-video.net") || hlsUrl.includes("ivs.rocks") || hlsUrl.includes("ivs");
+
+    if (isIvsStream && window.IVSPlayer && window.IVSPlayer.isPlayerSupported) {
+      const IVSPlayer = window.IVSPlayer;
+      const player = IVSPlayer.create();
+      ivsPlayerRef.current = player;
+      player.attachHTMLVideoElement(video);
+      player.load(hlsUrl);
+      
+      player.setVolume(isMuted ? 0 : volume);
+      
+      if (autoPlay) {
+        player.play().catch(() => {
+          setIsPlaying(false);
+        });
+      }
+
+      const PlayerState = IVSPlayer.PlayerState;
+      player.addEventListener(PlayerState.PLAYING, () => setIsPlaying(true));
+      player.addEventListener(PlayerState.ENDED, () => setIsPlaying(false));
+      
+      const PlayerEventType = IVSPlayer.PlayerEventType;
+      player.addEventListener(PlayerEventType.QUALITY_CHANGED, () => {
+        const q = player.getQuality();
+        if (q) {
+          setCurrentLevel(q.name);
+        }
+      });
+
+      const qualities = player.getQualities();
+      setLevels(qualities.map((q, idx) => ({ id: idx, height: q.height, name: q.name })));
+
+      return () => {
+        player.pause();
+        player.delete();
+        ivsPlayerRef.current = null;
+      };
+    }
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -166,7 +215,7 @@ export default function HlsPlayer({
         video.play().catch(() => setIsPlaying(false));
       }
     }
-  }, [hlsUrl, offline, autoPlay]);
+  }, [hlsUrl, offline, autoPlay, ivsLoaded]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -207,9 +256,28 @@ export default function HlsPlayer({
       videoRef.current.muted = newVol === 0;
       setIsMuted(newVol === 0);
     }
+    if (ivsPlayerRef.current) {
+      ivsPlayerRef.current.setVolume(newVol);
+    }
   };
 
   const selectQuality = (levelIndex) => {
+    if (ivsPlayerRef.current) {
+      const qualities = ivsPlayerRef.current.getQualities();
+      if (levelIndex === -1) {
+        ivsPlayerRef.current.setAutoQualityMode(true);
+        setCurrentLevel(-1);
+      } else {
+        const selected = qualities[levelIndex];
+        if (selected) {
+          ivsPlayerRef.current.setAutoQualityMode(false);
+          ivsPlayerRef.current.setQuality(selected);
+          setCurrentLevel(selected.name);
+        }
+      }
+      setShowQualityMenu(false);
+      return;
+    }
     if (!hlsRef.current) return;
     hlsRef.current.currentLevel = levelIndex;
     setCurrentLevel(levelIndex);

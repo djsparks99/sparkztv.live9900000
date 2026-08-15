@@ -65,36 +65,42 @@ export function AuthProvider({ children }) {
     }
 
     if (fbUser.email === "markysparks99@gmail.com") {
-      let photo_url = fbUser.photoURL || null;
-      let social_share_image_url = null;
-      let bio = "Broadcasting live and loud on SPARKZ.TV";
-      let display_name = "djsparkz";
       let userDoc = null;
       try {
-        const fetched = await fetchUserDoc(fbUser.uid);
-        if (fetched) {
-          userDoc = fetched;
-          if (userDoc.photo_url) photo_url = userDoc.photo_url;
-          if (userDoc.social_share_image_url) social_share_image_url = userDoc.social_share_image_url;
-          if (userDoc.bio) bio = userDoc.bio;
-          if (userDoc.display_name && userDoc.display_name !== "SPARKS 108 FM") display_name = userDoc.display_name;
-        }
-      } catch (e) {}
+        userDoc = await fetchUserDoc(fbUser.uid);
+      } catch (e) {
+        console.warn("Error loading djsparkz userDoc from Firestore:", e);
+      }
 
       const profile = {
         uid: fbUser.uid,
         email: fbUser.email,
-        username: "djsparkz",
-        display_name: display_name,
-        photo_url: photo_url,
-        social_share_image_url: social_share_image_url,
-        bio: bio,
+        username: userDoc?.username || "djsparkz",
+        display_name: userDoc?.display_name || "djsparkz",
+        photo_url: userDoc?.photo_url || fbUser.photoURL || null,
+        social_share_image_url: userDoc?.social_share_image_url || null,
+        bio: userDoc?.bio !== undefined ? userDoc.bio : "Broadcasting live and loud on SPARKZ.TV",
         genre: userDoc?.genre || "",
         location: userDoc?.location || "",
         socials: userDoc?.socials || null,
+        watts: userDoc?.watts !== undefined ? userDoc.watts : 2500,
+        vinyl_bits: userDoc?.vinyl_bits !== undefined ? userDoc.vinyl_bits : 0,
+        accumulated_bits_balance: userDoc?.accumulated_bits_balance !== undefined ? userDoc.accumulated_bits_balance : 0,
+        payout_method: userDoc?.payout_method || null,
+        payout_details: userDoc?.payout_details || null,
         username_locked: true,
-        created_at: new Date().toISOString(),
+        created_at: userDoc?.created_at || new Date().toISOString(),
       };
+
+      if (!userDoc) {
+        // Save initial baseline document in Firestore so it is persistently stored
+        savePermanentUsername(fbUser.uid, {
+          username: "djsparkz",
+          display_name: "djsparkz",
+          email: fbUser.email,
+        }).catch((err) => console.warn("Could not save initial djsparkz profile in Firestore:", err));
+      }
+
       await syncExpressToken(fbUser, profile);
       setUser(profile);
       setNeedsUsername(false);
@@ -110,15 +116,20 @@ export function AuthProvider({ children }) {
           uid: fbUser.uid,
           email: fbUser.email || userDoc.email,
           username: userDoc.username,
-          display_name: userDoc.display_name,
+          display_name: userDoc.display_name || userDoc.username,
           photo_url: userDoc.photo_url || fbUser.photoURL || null,
           social_share_image_url: userDoc.social_share_image_url || null,
           bio: userDoc.bio || "",
           genre: userDoc.genre || "",
           location: userDoc.location || "",
           socials: userDoc.socials || null,
+          watts: userDoc.watts !== undefined ? userDoc.watts : 100,
+          vinyl_bits: userDoc.vinyl_bits !== undefined ? userDoc.vinyl_bits : 0,
+          accumulated_bits_balance: userDoc.accumulated_bits_balance !== undefined ? userDoc.accumulated_bits_balance : 0,
+          payout_method: userDoc.payout_method || null,
+          payout_details: userDoc.payout_details || null,
           username_locked: true,
-          created_at: userDoc.created_at,
+          created_at: userDoc.created_at || new Date().toISOString(),
         };
         await syncExpressToken(fbUser, profile);
         setUser(profile);

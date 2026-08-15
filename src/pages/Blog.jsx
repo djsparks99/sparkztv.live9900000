@@ -60,6 +60,69 @@ function handleFirestoreError(error, operationType, path) {
 // Pre-populated default core launch blog posts
 const DEFAULT_LAUNCH_POSTS = [
   {
+    id: "failing-platforms",
+    title: "Why Mainstream Platforms Are Failing Underground Music Creators",
+    slug: "why-mainstream-platforms-are-failing-underground-music-creators",
+    summary: "Monetization cuts, rigid DMCA takedowns, and algorithm-driven discovery are squeezing the life out of independent sound-system culture. Here is how we break free.",
+    author: "DJ Sparkz",
+    author_title: "Founder & Lead Selector",
+    published_at: "2026-08-15T09:00:00Z",
+    tags: ["COPYRIGHT", "INDEPENDENT", "DMCAS", "UNDERGROUND-MUSIC"],
+    content: `## The Crisis of the Algorithmic Feed
+Underground electronic music thrives on the unexpected: rare white label dubplates, unreleased bootlegs, and live, spontaneous mixtapes. However, mainstream streaming platforms are built for the commercial, sanitized mainstream. 
+
+Predatory automated copyright filters scan live streams in real-time, immediately muting or banning DJs for playing underground edits. 
+
+### Rigid Copyright Muting (The Death of the Selector)
+Automatic audio scanners do not understand fair use, educational archiving, or mixtape culture. When a DJ drops a rare white label or custom blend, the algorithm misidentifies it as a copyright violation, muting segments or terminating the stream. 
+
+This mechanical over-policing strips selectors of their musical vocabulary.
+
+### The Problem with Commercial Monopolies
+Mainstream platforms take up to 50% of subscriber revenue and gate organic reach behind paid visibility metrics. 
+
+Independent creators are forced to appeal to generic algorithms rather than their dedicated communities, resulting in:
+- **Homogenized Soundscapes**: DJs are discouraged from taking musical risks.
+- **Unstable Channels**: Fear of sudden, unappealing channel terminations due to copyright strikes.
+- **Predatory Monetization**: Creators struggle to earn sustainable livings from their crafts.
+
+## The Solution: SPARKZ.TV
+We built SPARKZ.TV as an alternative. By designing our own independent live infrastructure, we ensure zero automatic copyright muting and direct subscriber support. We are putting power back into the hands of selectors.
+
+This is our digital warehouse rave. No corporate police, just pure frequencies.`,
+  },
+  {
+    id: "independent-setup",
+    title: "Building Your Own Independent Live Streaming Setup on a Budget",
+    slug: "building-your-own-independent-live-streaming-setup-on-a-budget",
+    summary: "Stop overpaying for premium equipment. Learn how to configure OBS, select low-cost interfaces, and optimize high-fidelity sound for your independent streams.",
+    author: "Sub-Doctor",
+    author_title: "Acoustic Systems Engineer",
+    published_at: "2026-08-15T10:15:00Z",
+    tags: ["DIY", "STREAMING-TECH", "OBS-SETUP", "TUTORIAL"],
+    content: `## Quality Streams Don't Require Big Budgets
+You don't need a high-end commercial studio setup to broadcast pristine audio and HD video. With smart gear selection and optimized OBS configurations, you can build a premium stream setup that sounds incredible on high-power bass systems.
+
+### 1. High-Fidelity Audio Interface
+Pristine audio is the foundation of any underground set. Avoid cheap internal computer microphone jacks. Instead, choose reliable, budget-friendly external audio interfaces:
+- **Behringer U-Phoria UM2**: A ultra-budget, 24-bit/48kHz interface that accepts clean XLR or 1/4-inch line-ins from your mixer.
+- **Focusrite Scarlett Solo**: Renowned for exceptionally clean preamps and extremely low distortion.
+
+Connect the master or booth output of your DJ mixer directly into your interface inputs. Keep gain levels below 0dB to prevent digital clipping!
+
+### 2. Camera Setup (Maximize Visual Quality)
+- **Smartphone as Webcam**: Instead of buying a cheap, blurry USB webcam, use your phone's modern camera sensor. Free software like **NDI HX Camera** or **VDO.ninja** turns your iPhone or Android device into an ultra-sharp wireless camera feed inside OBS.
+- **Lighting is Key**: Even cheap cameras look incredible with good lighting. Avoid overhead light bulbs. Position a soft LED light source or ring light behind your camera facing your decks to eliminate harsh shadows.
+
+### 3. Recommended OBS Audio & Video Settings
+Configure Open Broadcaster Software (OBS) to optimize performance for SPARKZ.TV:
+- **Audio Bitrate**: Set your audio encoding bitrate to **320kbps** (Codec: AAC). This provides maximum audio clarity.
+- **Keyframe Interval**: Set this to exactly **2 seconds**. This is crucial for adaptive stream segmenters.
+- **Video Bitrate**: **3500 - 4500kbps** at 720p/60fps is the sweet spot for smooth motion capture without overloading your home upload bandwidth.
+
+By managing your system efficiently, you can deliver high-vibration performances to listeners worldwide without breaking the bank.`,
+  },
+  {
     id: "launch-origin-mission",
     title: "Who We Are, What We Do, and Why We Built SPARKZ.TV",
     slug: "who-we-are-what-we-do-and-why-we-built-sparkztv",

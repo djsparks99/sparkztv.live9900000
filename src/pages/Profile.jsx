@@ -32,17 +32,26 @@ export default function Profile() {
     if (user) {
       setDisplayName(user.display_name || "");
       setBio(user.bio || "");
+      setGenre(user.genre || "");
+      setLocation(user.location || "");
+      if (user.socials) {
+        setScLink(user.socials.soundcloud || "");
+        setMcLink(user.socials.mixcloud || "");
+        setSpLink(user.socials.spotify || "");
+        setIgLink(user.socials.instagram || "");
+        setYtLink(user.socials.youtube || "");
+        setTwLink(user.socials.twitter || "");
+      }
 
-      // Load additional metadata from Express cache proxy with fallback to Firestore
-      fetch(`/api/users/profile-by-uid/${user.uid}`)
-        .then(res => {
-          if (!res.ok) throw new Error("Fallback");
-          return res.json();
-        })
-        .then(data => {
-          if (data) {
-            if (data.genre) setGenre(data.genre);
-            if (data.location) setLocation(data.location);
+      // Fetch authoritative Firestore document to ensure fresh metadata
+      getDoc(doc(db, "users", user.uid))
+        .then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.display_name) setDisplayName(data.display_name);
+            if (data.bio !== undefined) setBio(data.bio);
+            if (data.genre !== undefined) setGenre(data.genre);
+            if (data.location !== undefined) setLocation(data.location);
             if (data.socials) {
               setScLink(data.socials.soundcloud || "");
               setMcLink(data.socials.mixcloud || "");
@@ -53,25 +62,7 @@ export default function Profile() {
             }
           }
         })
-        .catch(() => {
-          getDoc(doc(db, "users", user.uid))
-            .then((snap) => {
-              if (snap.exists()) {
-                const data = snap.data();
-                if (data.genre) setGenre(data.genre);
-                if (data.location) setLocation(data.location);
-                if (data.socials) {
-                  setScLink(data.socials.soundcloud || "");
-                  setMcLink(data.socials.mixcloud || "");
-                  setSpLink(data.socials.spotify || "");
-                  setIgLink(data.socials.instagram || "");
-                  setYtLink(data.socials.youtube || "");
-                  setTwLink(data.socials.twitter || "");
-                }
-              }
-            })
-            .catch((err) => console.warn("Error fetching user profile metadata:", err));
-        });
+        .catch((err) => console.warn("Error fetching user profile metadata from Firestore:", err));
 
       api.get("/channels/mine", {
         params: {
@@ -124,29 +115,29 @@ export default function Profile() {
         }
       };
 
+      if (user?.uid) {
+        await updateUserProfileInFirestore(user.uid, firestorePayload, user.username);
+      }
+
       let updatedData = null;
       try {
-        const { data } = await api.patch("/users/me", payload);
+        const { data } = await api.patch("/users/me", firestorePayload);
         updatedData = data;
       } catch (err1) {
         try {
-          const { data } = await api.put("/users/me", payload);
+          const { data } = await api.put("/users/me", firestorePayload);
           updatedData = data;
         } catch (err2) {
-          const { data } = await api.post("/users/me", payload);
-          updatedData = data;
+          try {
+            const { data } = await api.post("/users/me", firestorePayload);
+            updatedData = data;
+          } catch (err3) {
+            console.warn("Backend sync fallback:", err3);
+          }
         }
       }
 
-      if (user?.uid) {
-        updateUserProfileInFirestore(user.uid, firestorePayload, user.username).catch(() => {});
-      }
-
-      if (updatedData) {
-        setUser((prev) => (prev ? { ...prev, ...updatedData, genre, location, socials: firestorePayload.socials } : { ...updatedData, genre, location, socials: firestorePayload.socials }));
-      } else {
-        setUser((prev) => (prev ? { ...prev, display_name: displayName, bio, genre, location, socials: firestorePayload.socials } : { display_name: displayName, bio, genre, location, socials: firestorePayload.socials }));
-      }
+      setUser((prev) => (prev ? { ...prev, ...firestorePayload, ...(updatedData || {}) } : { ...firestorePayload, ...(updatedData || {}) }));
 
       toast.success("Profile updated successfully!");
     } catch (err) {

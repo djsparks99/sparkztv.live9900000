@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { getToken, setToken, fileUrl, BACKEND, api, getAbsoluteOrigin, apiErrorMessage, DEFAULT_AVATAR } from "@/lib/api";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, query, where, orderBy, onSnapshot, addDoc, limit } from "firebase/firestore";
 import { useAuth } from "@/lib/auth-context";
 import { Send, LogIn, User, Smile, Zap, Crown, Shield, Gem, Sparkles, X, Flame, Calendar, Users, Disc, Coins, ChevronRight, Headphones, Search, Volume2, Reply } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -133,6 +134,55 @@ export default function ChatPanel({ username, onCollapse }) {
       cancelled = true;
     };
   }, [username, user]);
+
+  // Real-Time Firestore Chat Sync
+  useEffect(() => {
+    if (!username) return;
+
+    const q = query(
+      collection(db, "chat_messages"),
+      where("channel_username", "==", username),
+      orderBy("created_at", "asc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const dbMsgs = [];
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        dbMsgs.push({
+          id: doc.id,
+          text: d.text,
+          sender_uid: d.sender_uid || "",
+          sender_username: d.sender_username || "guest",
+          sender_display_name: d.sender_display_name || "Guest Selector",
+          sender_photo_url: d.sender_photo_url || null,
+          created_at: d.created_at || new Date().toISOString(),
+          is_highlighted: d.is_highlighted || false,
+          highlight_type: d.highlight_type || "",
+          sender_badges: d.sender_badges || [],
+          sender_color: d.sender_color || "",
+          is_system_command: d.is_system_command || false,
+        });
+      });
+
+      if (dbMsgs.length > 0) {
+        setMessages((prev) => {
+          const prevList = Array.isArray(prev) ? prev : [];
+          const merged = [...prevList];
+          dbMsgs.forEach((msg) => {
+            if (!merged.some((m) => m.id === msg.id)) {
+              merged.push(msg);
+            }
+          });
+          return merged.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        });
+      }
+    }, (error) => {
+      console.warn("Firestore chat listener warning:", error);
+    });
+
+    return () => unsubscribe();
+  }, [username]);
 
   const saveGuestName = (e) => {
     e?.preventDefault();
@@ -398,33 +448,57 @@ export default function ChatPanel({ username, onCollapse }) {
   const send = (e) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t || !wsRef.current || wsRef.current.readyState !== 1) return;
+    if (!t) return;
 
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "typing",
-        is_typing: false,
-        sender_display_name: user?.display_name || null,
-        sender_username: user?.username || null,
-        sender_photo_url: user?.photo_url || user?.photoUrl || null,
-      })
-    );
-    lastTypingSentRef.current = 0;
+    // Send via WebSocket if open
+    if (wsRef.current && wsRef.current.readyState === 1) {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      wsRef.current.send(
+        JSON.stringify({
+          type: "typing",
+          is_typing: false,
+          sender_display_name: user?.display_name || null,
+          sender_username: user?.username || null,
+          sender_photo_url: user?.photo_url || user?.photoUrl || null,
+        })
+      );
+      lastTypingSentRef.current = 0;
 
-    wsRef.current.send(
-      JSON.stringify({
-        text: t,
-        is_highlighted: isHighlight,
-        highlight_type: "neon_glow",
-        sender_display_name: user?.display_name || null,
-        sender_username: user?.username || null,
-        sender_photo_url: user?.photo_url || user?.photoUrl || null,
-        parent_message_id: replyTo?.id || null,
-        parent_message_text: replyTo?.text || null,
-        parent_message_sender: replyTo?.sender_display_name || replyTo?.sender_username || null,
+      wsRef.current.send(
+        JSON.stringify({
+          text: t,
+          is_highlighted: isHighlight,
+          highlight_type: "neon_glow",
+          sender_display_name: user?.display_name || null,
+          sender_username: user?.username || null,
+          sender_photo_url: user?.photo_url || user?.photoUrl || null,
+          parent_message_id: replyTo?.id || null,
+          parent_message_text: replyTo?.text || null,
+          parent_message_sender: replyTo?.sender_display_name || replyTo?.sender_username || null,
+        })
+      );
+    }
+
+    // Always write to Firestore to fully integrate real-time collections and provide 100% reliability
+    const messagePayload = {
+      channel_username: username,
+      text: t,
+      sender_uid: user?.uid || "guest",
+      sender_username: user?.username || guestName || "Guest Selector",
+      sender_display_name: user?.display_name || guestName || "Guest Selector",
+      created_at: new Date().toISOString(),
+      is_highlighted: isHighlight,
+      highlight_type: isHighlight ? "neon_glow" : "",
+      sender_photo_url: user?.photo_url || user?.photoUrl || null,
+    };
+
+    addDoc(collection(db, "chat_messages"), messagePayload)
+      .then(() => {
+        // Written to Firestore successfully
       })
-    );
+      .catch((err) => {
+        console.warn("Firestore message write warning:", err);
+      });
 
     if (isHighlight) {
       setWatts((prev) => Math.max(0, prev - 50));

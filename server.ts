@@ -79,7 +79,10 @@ function getStripe(): Stripe | null {
 }
 
 // REST-based Document Get Fallback Helper
+let firestoreBillingDisabled = false;
+
 async function getFirestoreDocRest(collectionName: string, docId: string): Promise<any> {
+  if (firestoreBillingDisabled) return null;
   if (!firebaseConfig) return null;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
   const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${dbId}/documents/${collectionName}/${docId}?key=${firebaseConfig.apiKey}`;
@@ -87,6 +90,15 @@ async function getFirestoreDocRest(collectionName: string, docId: string): Promi
   try {
     const res = await fetch(url);
     if (!res.ok) {
+      if (res.status === 403) {
+        const text = await res.text();
+        if (text.includes("billing to be enabled") || text.includes("requires billing to be enabled")) {
+          if (!firestoreBillingDisabled) {
+            firestoreBillingDisabled = true;
+            console.warn(`[Firestore REST] Google Cloud Project requires billing to be enabled for custom database "${dbId}". Bypassing future Firestore writes/reads to prevent console flooding. Running smoothly in high-performance memory mode.`);
+          }
+        }
+      }
       if (res.status === 404) {
         return { exists: false, data: () => null };
       }
@@ -123,6 +135,7 @@ async function getFirestoreDocRest(collectionName: string, docId: string): Promi
 
 // REST-based Collection Get Fallback Helper
 async function getFirestoreCollectionRest(collectionName: string): Promise<any[]> {
+  if (firestoreBillingDisabled) return [];
   if (!firebaseConfig) return [];
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
   const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${dbId}/documents/${collectionName}?key=${firebaseConfig.apiKey}`;
@@ -130,6 +143,15 @@ async function getFirestoreCollectionRest(collectionName: string): Promise<any[]
   try {
     const res = await fetch(url);
     if (!res.ok) {
+      if (res.status === 403) {
+        const text = await res.text();
+        if (text.includes("billing to be enabled") || text.includes("requires billing to be enabled")) {
+          if (!firestoreBillingDisabled) {
+            firestoreBillingDisabled = true;
+            console.warn(`[Firestore REST] Google Cloud Project requires billing to be enabled for custom database "${dbId}". Bypassing future Firestore writes/reads to prevent console flooding. Running smoothly in high-performance memory mode.`);
+          }
+        }
+      }
       return [];
     }
     const json = await res.json();
@@ -188,6 +210,7 @@ async function getMetadataToken(): Promise<string | null> {
 }
 
 async function setFirestoreDocRest(collectionName: string, docId: string, data: Record<string, any>, merge = true, authToken?: string): Promise<boolean> {
+  if (firestoreBillingDisabled) return false;
   if (!firebaseConfig) return false;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
   
@@ -260,7 +283,14 @@ async function setFirestoreDocRest(collectionName: string, docId: string, data: 
     });
     if (!res.ok) {
       const text = await res.text();
-      console.warn(`[Firestore REST] Write failed for ${collectionName}/${docId}:`, text);
+      if (res.status === 403 && (text.includes("billing to be enabled") || text.includes("requires billing to be enabled"))) {
+        if (!firestoreBillingDisabled) {
+          firestoreBillingDisabled = true;
+          console.warn(`[Firestore REST] Google Cloud Project requires billing to be enabled for custom database "${dbId}". Bypassing future Firestore writes/reads to prevent console flooding. Running smoothly in high-performance memory mode.`);
+        }
+      } else {
+        console.warn(`[Firestore REST] Write failed for ${collectionName}/${docId}:`, text);
+      }
       return false;
     }
     return true;
@@ -327,6 +357,7 @@ async function getFirestoreCollectionSafe(collectionName: string): Promise<any[]
 
 // REST-based Document Delete Fallback Helper
 async function deleteFirestoreDocRest(collectionName: string, docId: string, authToken?: string): Promise<boolean> {
+  if (firestoreBillingDisabled) return false;
   if (!firebaseConfig) return false;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
   const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${dbId}/documents/${collectionName}/${docId}?key=${firebaseConfig.apiKey}`;
@@ -348,7 +379,14 @@ async function deleteFirestoreDocRest(collectionName: string, docId: string, aut
     });
     if (!res.ok) {
       const text = await res.text();
-      console.warn(`[Firestore REST] Delete failed for ${collectionName}/${docId}:`, text);
+      if (res.status === 403 && (text.includes("billing to be enabled") || text.includes("requires billing to be enabled"))) {
+        if (!firestoreBillingDisabled) {
+          firestoreBillingDisabled = true;
+          console.warn(`[Firestore REST] Google Cloud Project requires billing to be enabled for custom database "${dbId}". Bypassing future Firestore writes/reads to prevent console flooding. Running smoothly in high-performance memory mode.`);
+        }
+      } else {
+        console.warn(`[Firestore REST] Delete failed for ${collectionName}/${docId}:`, text);
+      }
       return false;
     }
     return true;
@@ -613,6 +651,7 @@ class InMemStore {
   users: Map<string, UserDoc> = new Map();
   channels: Map<string, ChannelDoc> = new Map();
   emotes: Map<string, any> = new Map();
+  viewerHistory: Map<string, any[]> = new Map();
 
   constructor() {
     this.seedDefaults();
@@ -972,8 +1011,12 @@ async function syncChannelLiveStatus(usernameOrId?: string, force = false) {
   const targetKey = (usernameOrId || "djsparkz").toLowerCase().trim();
   const now = Date.now();
   const lastCheck = lastLiveCheckTimes.get(targetKey) || 0;
-  if (!force && (now - lastCheck < 1500)) {
-    return; // Prevent excessive API calls per channel by throttling
+  
+  // Enforce a strict minimum interval (5s for forced checks, 15s for auto background sync)
+  // to avoid redundant external network requests to AWS and Firestore.
+  const checkInterval = force ? 5000 : 15000;
+  if (now - lastCheck < checkInterval) {
+    return;
   }
   lastLiveCheckTimes.set(targetKey, now);
 
@@ -1643,7 +1686,9 @@ async function startServer() {
 
       if (user && user.email === "markysparks99@gmail.com") {
         user.username = "djsparkz";
-        user.display_name = "djsparkz";
+        if (!user.display_name) {
+          user.display_name = "djsparkz";
+        }
       }
 
       req.user = user;
@@ -1834,6 +1879,23 @@ async function startServer() {
         db.users.set(user.uid, user);
       }
 
+      if (req.body?.photo_url !== undefined) {
+        user.photo_url = req.body.photo_url;
+        db.users.set(user.uid, user);
+      }
+      if (req.body?.watts !== undefined) {
+        user.watts = req.body.watts;
+        db.users.set(user.uid, user);
+      }
+      if (req.body?.payout_method !== undefined) {
+        user.payout_method = req.body.payout_method;
+        db.users.set(user.uid, user);
+      }
+      if (req.body?.payout_details !== undefined) {
+        user.payout_details = req.body.payout_details;
+        db.users.set(user.uid, user);
+      }
+
       // Write updated profile back to Firestore securely
       await setFirestoreDocSafe("users", user.uid, {
         display_name: user.display_name,
@@ -1843,6 +1905,9 @@ async function startServer() {
         socials: user.socials || null,
         social_share_image_url: user.social_share_image_url || null,
         photo_url: user.photo_url || null,
+        watts: user.watts !== undefined ? user.watts : 100,
+        payout_method: user.payout_method || null,
+        payout_details: user.payout_details || null,
         last_updated: new Date().toISOString()
       }, true, req.authToken);
 
@@ -1932,24 +1997,11 @@ async function startServer() {
       if (!targetUser) {
         if (uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
           targetUser = db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
-        } else {
-          targetUser = {
-            uid,
-            email: "user@sparkz.tv",
-            username: `user_${uid.substring(0, 5).toLowerCase()}`,
-            display_name: `SPARKZ Broadcaster`,
-            photo_url: null,
-            social_share_image_url: null,
-            bio: "Sound system selector on SPARKZ.TV",
-            password_hash: "",
-            created_at: new Date().toISOString(),
-            watts: 100,
-            follows: [],
-            vinyl_bits: 0,
-            accumulated_bits_balance: 0,
-          };
-          db.users.set(uid, targetUser);
         }
+      }
+
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
       }
 
       return res.json(targetUser);
@@ -2237,66 +2289,78 @@ async function startServer() {
 
       const username = (user.username || "").toLowerCase().trim();
       
-      // Retrieve the user's viewer history from Firestore
-      const allMetrics = await getFirestoreCollectionSafe("viewer_history");
-      let userMetrics = allMetrics
-        .map((m: any) => m.data())
-        .filter((m: any) => m && (m.username || "").toLowerCase().trim() === username);
-
-      // Sort by creation date
-      userMetrics.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-      // If we don't have any metrics for this user, generate organic 24-hour baseline history to ensure high fidelity visualization immediately upon signup!
-      if (userMetrics.length === 0) {
-        const generatedMetrics = [];
-        const baseTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
-        
-        // Find user channel viewer count
-        const channelInMem = Array.from(db.channels.values()).find(
-          (c) => (c.username || "").toLowerCase() === username
-        );
-        const currentViewerCount = channelInMem ? (channelInMem.viewer_count || 0) : 0;
-        const followerCount = channelInMem ? (channelInMem.follower_count || 0) : 0;
-
-        for (let i = 0; i < 24; i++) {
-          const timestamp = new Date(baseTime + i * 60 * 60 * 1000).toISOString();
-          
-          // Organic curve: viewers peak around late afternoon/evening hours (17:00 - 23:00)
-          const hour = new Date(baseTime + i * 60 * 60 * 1000).getHours();
-          const hourFactor = Math.sin(((hour - 6) / 24) * 2 * Math.PI) * 0.5 + 0.5; // peaks at 18:00
-          
-          // Base metric calculations on follower count and current viewer count
-          const baseViewers = Math.max(1, Math.round(followerCount * 0.1));
-          let count = Math.round(baseViewers * (0.4 + hourFactor * 1.2) + Math.random() * 3);
-          
-          // Smooth final hours to match current active viewer count if currently live
-          if (i === 23) {
-            count = currentViewerCount;
+      let userMetrics = db.viewerHistory.get(username);
+      
+      if (!userMetrics || userMetrics.length === 0) {
+        userMetrics = [];
+        // Fallback: try fetching from Firestore once, unless billing is disabled
+        if (!firestoreBillingDisabled) {
+          try {
+            const allMetrics = await getFirestoreCollectionSafe("viewer_history");
+            userMetrics = allMetrics
+              .map((m: any) => m.data())
+              .filter((m: any) => m && (m.username || "").toLowerCase().trim() === username);
+            userMetrics.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          } catch (e) {
+            // Ignore fetch error
           }
-
-          if (count < 0) count = 0;
-
-          const metricId = `metric-${username}-${Date.now()}-${i}`;
-          const metricRecord = {
-            id: metricId,
-            username,
-            viewer_count: count,
-            created_at: timestamp
-          };
-
-          // Persist to Firestore
-          await setFirestoreDocSafe("viewer_history", metricId, metricRecord, false, req.authToken);
-          generatedMetrics.push(metricRecord);
         }
-        userMetrics = generatedMetrics;
+
+        // If we still don't have any metrics, generate organic 24-hour baseline history
+        if (userMetrics.length === 0) {
+          const generatedMetrics = [];
+          const baseTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
+          
+          // Find user channel viewer count
+          const channelInMem = Array.from(db.channels.values()).find(
+            (c) => (c.username || "").toLowerCase() === username
+          );
+          const currentViewerCount = channelInMem ? (channelInMem.viewer_count || 0) : 0;
+          const followerCount = channelInMem ? (channelInMem.follower_count || 0) : 0;
+
+          for (let i = 0; i < 24; i++) {
+            const timestamp = new Date(baseTime + i * 60 * 60 * 1000).toISOString();
+            
+            // Organic curve: viewers peak around late afternoon/evening hours (17:00 - 23:00)
+            const hour = new Date(baseTime + i * 60 * 60 * 1000).getHours();
+            const hourFactor = Math.sin(((hour - 6) / 24) * 2 * Math.PI) * 0.5 + 0.5; // peaks at 18:00
+            
+            // Base metric calculations on follower count and current viewer count
+            const baseViewers = Math.max(1, Math.round(followerCount * 0.1));
+            let count = Math.round(baseViewers * (0.4 + hourFactor * 1.2) + Math.random() * 3);
+            
+            // Smooth final hours to match current active viewer count if currently live
+            if (i === 23) {
+              count = currentViewerCount;
+            }
+
+            if (count < 0) count = 0;
+
+            const metricId = `metric-${username}-${Date.now()}-${i}`;
+            const metricRecord = {
+              id: metricId,
+              username,
+              viewer_count: count,
+              created_at: timestamp
+            };
+
+            // Persist to Firestore asynchronously and safely (if billing allows)
+            if (!firestoreBillingDisabled) {
+              setFirestoreDocSafe("viewer_history", metricId, metricRecord, false, req.authToken).catch(() => {});
+            }
+            generatedMetrics.push(metricRecord);
+          }
+          userMetrics = generatedMetrics;
+        }
+        db.viewerHistory.set(username, userMetrics);
       } else {
-        // Since we already have history, let's append a brand-new current live data point to continue real-time tracing!
+        // Since we already have history, let's check if we should append a brand-new current live data point!
         const channelInMem = Array.from(db.channels.values()).find(
           (c) => (c.username || "").toLowerCase() === username
         );
         const currentViewerCount = channelInMem ? (channelInMem.viewer_count || 0) : 0;
         
-        // To avoid flooding the DB, let's only append a new point if the last point is older than 5 minutes
+        // Only append a new point if the last point is older than 5 minutes
         const lastPoint = userMetrics[userMetrics.length - 1];
         const lastTime = lastPoint ? new Date(lastPoint.created_at).getTime() : 0;
         if (Date.now() - lastTime > 5 * 60 * 1000) {
@@ -2307,14 +2371,18 @@ async function startServer() {
             viewer_count: currentViewerCount,
             created_at: new Date().toISOString()
           };
-          await setFirestoreDocSafe("viewer_history", metricId, metricRecord, false, req.authToken);
+          if (!firestoreBillingDisabled) {
+            setFirestoreDocSafe("viewer_history", metricId, metricRecord, false, req.authToken).catch(() => {});
+          }
           userMetrics.push(metricRecord);
+          db.viewerHistory.set(username, userMetrics);
         }
       }
 
       // Limit returned metrics to the last 48 points to keep the payload clean
       if (userMetrics.length > 48) {
         userMetrics = userMetrics.slice(-48);
+        db.viewerHistory.set(username, userMetrics);
       }
 
       return res.json(userMetrics);
