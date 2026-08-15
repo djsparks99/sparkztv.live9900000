@@ -24,7 +24,27 @@ import {
 } from "lucide-react";
 
 // Curated resident & featured underground DJs with rich social links & metadata
-const DEFAULT_FEATURED_DJS = [];
+const DEFAULT_FEATURED_DJS = [
+  {
+    username: "djsparkz",
+    display_name: "SPARKS 108 FM",
+    tagline: "Premium Underground Dubs & Jungle Wax",
+    genre: "Drum & Bass / Jungle",
+    categories: ["drum and bass", "jungle", "old skool"],
+    location: "London, UK",
+    bio: "The founder of SPARKZ.TV. Selecta spin the finest exclusive dubplates, underground jungle wax, rolling drum & bass, and classic 90s warehouse hardcore directly from the vinyl vault.",
+    photo_url: "https://api.dicebear.com/7.x/bottts/svg?seed=djsparkz",
+    cover_gradient: "from-amber-500/20 via-orange-600/10 to-transparent",
+    watts: 99999,
+    accent_color: "#e5ff00",
+    badge: "STATION BOSS",
+    socials: {
+      soundcloud: "https://soundcloud.com",
+      twitter: "https://twitter.com",
+      instagram: "https://instagram.com"
+    }
+  }
+];
 
 const GENRE_FILTERS = [
   { id: "all", label: "ALL DJS" },

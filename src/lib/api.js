@@ -21,7 +21,8 @@ export function getAbsoluteOrigin() {
         const isAiStudioUrl = 
           uHostname.endsWith("google.com") || 
           uHostname.endsWith("ai.studio") || 
-          uHostname.endsWith("google.cn");
+          uHostname.endsWith("google.cn") ||
+          uHostname.endsWith("googleusercontent.com");
         if (!isAiStudioUrl) {
           return u.origin;
         }
@@ -42,7 +43,8 @@ export function getAbsoluteOrigin() {
       const isAiStudioUrl = 
         oHostname.endsWith("google.com") || 
         oHostname.endsWith("ai.studio") || 
-        oHostname.endsWith("google.cn");
+        oHostname.endsWith("google.cn") ||
+        oHostname.endsWith("googleusercontent.com");
       if (!isAiStudioUrl) {
         return origin;
       }
@@ -62,7 +64,8 @@ export function getAbsoluteOrigin() {
     const isAiStudioUrl = 
       hostLower.endsWith("google.com") || 
       hostLower.endsWith("ai.studio") || 
-      hostLower.endsWith("google.cn");
+      hostLower.endsWith("google.cn") ||
+      hostLower.endsWith("googleusercontent.com");
     if (!isAiStudioUrl) {
       return `${protocol}//${host}`;
     }
@@ -80,7 +83,8 @@ export function getAbsoluteOrigin() {
         const isAiStudio = 
           refHostname.endsWith("google.com") || 
           refHostname.endsWith("ai.studio") || 
-          refHostname.endsWith("google.cn");
+          refHostname.endsWith("google.cn") ||
+          refHostname.endsWith("googleusercontent.com");
         if (!isAiStudio) {
           return refUrl.origin;
         }

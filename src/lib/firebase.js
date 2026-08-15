@@ -68,7 +68,17 @@ export async function fetchUserDoc(uid) {
       }
     }
   } catch (err) {
-    console.warn("Firestore fetchUserDoc warning (trying fallback):", err);
+    const errorStr = (err?.message || "").toLowerCase();
+    const isOffline = errorStr.includes("offline") || 
+                      errorStr.includes("unavailable") || 
+                      errorStr.includes("failed to get document") ||
+                      err?.code === "unavailable";
+    
+    if (isOffline) {
+      console.log(`[Firestore Offline Fallback] Client is temporarily offline or establishing connection. Fetching user profile via backend server...`);
+    } else {
+      console.warn("Firestore fetchUserDoc warning (trying fallback):", err);
+    }
   }
 
   // 2. Fallback to Express backend if Firestore is temporarily offline or unreachable

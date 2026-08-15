@@ -992,9 +992,20 @@ export default function Channel() {
                   </div>
                 </div>
 
+                {!user ? (
+                  <div className="rounded-none border border-red-500/30 bg-red-500/10 p-3 text-red-200">
+                    Please log in to gift a subscription.
+                  </div>
+                ) : (user.watts || 0) < 20000 ? (
+                  <div className="rounded-none border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200 space-y-1">
+                    <p className="font-bold">// ELIGIBILITY REQUIREMENT</p>
+                    <p>To gift a subscription, you must have at least <span className="text-[#e5ff00] font-bold">20,000 Watts</span>. Your current balance is <span className="text-white font-bold">{(user.watts || 0).toLocaleString()} Watts</span>.</p>
+                  </div>
+                ) : null}
+
                 <button
                   type="button"
-                  disabled={!giftRecipient || giftingInProgress}
+                  disabled={!user || (user.watts || 0) < 20000 || !giftRecipient || giftingInProgress}
                   onClick={async () => {
                     setGiftingInProgress(true);
                     setTimeout(() => {

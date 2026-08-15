@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import LiveSidebar from "@/components/LiveSidebar";
 import AuthModal from "@/components/AuthModal";
 import UsernameLockModal from "@/components/UsernameLockModal";
+import Footer from "@/components/Footer";
 
 // Real pages
 import Browse from "@/pages/Browse";
@@ -50,28 +51,31 @@ export default function App() {
 
         {/* Scrollable Page Router Viewport */}
         <main className={`flex-1 bg-[#0e0e10] relative flex flex-col min-h-0 ${isChannelPage ? "overflow-hidden h-full" : "overflow-y-auto"}`}>
-          <Routes>
-            {/* Standard Routes */}
-            <Route path="/" element={<Browse />} />
-            <Route path="/directory" element={<Directory />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/channel/:username" element={<Channel />} />
-            
-            {/* Dynamic Blog & Articles */}
-            <Route path="/blog" element={<Blog />} />
-            
-            {/* Community Lounge & Profiles */}
-            <Route path="/lounge" element={<Lounge />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/payouts" element={<Payouts />} />
+          <div className="flex-1">
+            <Routes>
+              {/* Standard Routes */}
+              <Route path="/" element={<Browse />} />
+              <Route path="/directory" element={<Directory />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/channel/:username" element={<Channel />} />
+              
+              {/* Dynamic Blog & Articles */}
+              <Route path="/blog" element={<Blog />} />
+              
+              {/* Community Lounge & Profiles */}
+              <Route path="/lounge" element={<Lounge />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/payouts" element={<Payouts />} />
 
-            {/* Direct Login/Register (Provides full page fallbacks) */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+              {/* Direct Login/Register (Provides full page fallbacks) */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Fallback Catch-All */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Fallback Catch-All */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+          {!isChannelPage && !isAuthPage && <Footer />}
         </main>
       </div>
     </div>

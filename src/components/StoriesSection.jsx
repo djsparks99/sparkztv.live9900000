@@ -35,6 +35,20 @@ export default function StoriesSection({ sidebar = false, collapsed = false }) {
         setStories(data);
       }
     } catch (e) {
+      console.warn("Failed to load stories with api.get, trying relative fetch fallback:", e.message || e);
+      try {
+        const res = await fetch("/api/stories");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setStories(data);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Relative fetch fallback for stories also failed:", fallbackErr);
+      }
       console.error("Failed to load stories:", e);
     } finally {
       setLoading(false);
