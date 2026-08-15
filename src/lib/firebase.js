@@ -55,6 +55,19 @@ export const logOut = () => signOut(auth);
 
 // Firestore Profile Helpers
 export async function fetchUserDoc(uid) {
+  // Try Express API first to protect Firestore reads quota
+  try {
+    const res = await fetch(`/api/users/profile-by-uid/${uid}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.uid) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("Express profile cache fetch fell back, trying Firestore:", err);
+  }
+
   try {
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
@@ -72,10 +85,25 @@ export async function savePermanentUsername(uid, { username, display_name, email
   const userRef = doc(db, "users", uid);
 
   // Check if user already has a locked username
-  const existingSnap = await getDoc(userRef);
-  if (existingSnap.exists() && existingSnap.data()?.username_locked) {
+  let existingData = null;
+  try {
+    const existingSnap = await getDoc(userRef);
+    if (existingSnap.exists()) {
+      existingData = existingSnap.data();
+    }
+  } catch (e) {
+    console.warn("Firestore savePermanentUsername getDoc notice (could be quota limit):", e);
+    try {
+      const res = await fetch(`/api/users/profile-by-uid/${uid}`);
+      if (res.ok) {
+        existingData = await res.json();
+      }
+    } catch (err) {}
+  }
+
+  if (existingData && existingData.username_locked) {
     // Permanent lock prevents overwriting username/display_name
-    return existingSnap.data();
+    return existingData;
   }
 
   const userData = {
@@ -85,32 +113,47 @@ export async function savePermanentUsername(uid, { username, display_name, email
     display_name: display_name || cleanUsername,
     username_locked: true,
     photo_url: auth.currentUser?.photoURL || null,
-    bio: existingSnap.exists() ? existingSnap.data()?.bio || "" : "",
-    created_at: existingSnap.exists()
-      ? existingSnap.data()?.created_at || new Date().toISOString()
+    bio: existingData ? existingData.bio || "" : "",
+    created_at: existingData
+      ? existingData.created_at || new Date().toISOString()
       : new Date().toISOString(),
   };
 
-  await setDoc(userRef, userData, { merge: true });
+  try {
+    await setDoc(userRef, userData, { merge: true });
+  } catch (err) {
+    console.warn("Firestore setDoc user warning (quota limit):", err);
+  }
 
   // Also sync or create channel doc in Firestore
   const channelRef = doc(db, "channels", uid);
-  const channelSnap = await getDoc(channelRef);
-  if (!channelSnap.exists()) {
-    await setDoc(channelRef, {
-      channel_id: uid,
-      user_uid: uid,
-      username: cleanUsername,
-      display_name: display_name || cleanUsername,
-      photo_url: auth.currentUser?.photoURL || null,
-      thumbnail_url: null,
-      playback_id: uid.substring(0, 16),
-      stream_title: `${display_name || cleanUsername}'s Live Stream`,
-      category: "music",
-      is_live: false,
-      viewer_count: 0,
-      last_updated: new Date().toISOString(),
-    });
+  let channelExists = false;
+  try {
+    const channelSnap = await getDoc(channelRef);
+    channelExists = channelSnap.exists();
+  } catch (err) {
+    // assume false but try set anyway
+  }
+
+  if (!channelExists) {
+    try {
+      await setDoc(channelRef, {
+        channel_id: uid,
+        user_uid: uid,
+        username: cleanUsername,
+        display_name: display_name || cleanUsername,
+        photo_url: auth.currentUser?.photoURL || null,
+        thumbnail_url: null,
+        playback_id: uid.substring(0, 16),
+        stream_title: `${display_name || cleanUsername}'s Live Stream`,
+        category: "music",
+        is_live: false,
+        viewer_count: 0,
+        last_updated: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn("Firestore setDoc channel warning:", err);
+    }
   }
 
   return userData;
@@ -120,7 +163,11 @@ export async function updateUserProfileInFirestore(uid, updates, username = null
   if (!uid || !updates) return;
   try {
     const userRef = doc(db, "users", uid);
-    await setDoc(userRef, updates, { merge: true });
+    try {
+      await setDoc(userRef, updates, { merge: true });
+    } catch (err) {
+      console.warn("Firestore setDoc user profile update warning:", err);
+    }
 
     const channelUpdates = {};
     if (updates.display_name !== undefined) channelUpdates.display_name = updates.display_name;
@@ -134,9 +181,23 @@ export async function updateUserProfileInFirestore(uid, updates, username = null
     // Ensure username and channel_id are always populated in the channel document
     let resolvedUsername = username;
     if (!resolvedUsername) {
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists() && userSnap.data()?.username) {
-        resolvedUsername = userSnap.data().username;
+      try {
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data()?.username) {
+          resolvedUsername = userSnap.data().username;
+        }
+      } catch (err) {
+        console.warn("Could not get username from firestore due to error:", err);
+        // Fall back to fetching profile from Express
+        try {
+          const res = await fetch(`/api/users/profile-by-uid/${uid}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.username) {
+              resolvedUsername = data.username;
+            }
+          }
+        } catch (expressErr) {}
       }
     }
 
@@ -146,9 +207,13 @@ export async function updateUserProfileInFirestore(uid, updates, username = null
     }
 
     if (Object.keys(channelUpdates).length > 0) {
-      await setDoc(doc(db, "channels", uid), channelUpdates, { merge: true });
-      if (resolvedUsername) {
-        await setDoc(doc(db, "channels", resolvedUsername.toLowerCase()), channelUpdates, { merge: true });
+      try {
+        await setDoc(doc(db, "channels", uid), channelUpdates, { merge: true });
+        if (resolvedUsername) {
+          await setDoc(doc(db, "channels", resolvedUsername.toLowerCase()), channelUpdates, { merge: true });
+        }
+      } catch (err) {
+        console.warn("Firestore channel update warning:", err);
       }
     }
   } catch (err) {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, fileUrl, DEFAULT_AVATAR } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -10,9 +10,43 @@ import StreamCarousel from "@/components/StreamCarousel";
 import FeaturedDJProfiles from "@/components/FeaturedDJProfiles";
 import ChatPanel from "@/components/ChatPanel";
 import SEO from "@/components/SEO";
-import { ArrowRight, Radio, Zap, Heart } from "lucide-react";
+import HlsPlayer from "@/components/HlsPlayer";
+import { toast } from "sonner";
+import { ArrowRight, Radio, Zap, Heart, Eye, Volume2, VolumeX, Share2 } from "lucide-react";
 import { useLivepeerAutoPoll } from "@/hooks/useLivepeerAutoPoll";
 import { useStableLiveChannels } from "@/hooks/useStableLiveChannels";
+
+function isDocId(str) {
+  if (!str || typeof str !== "string") return false;
+  const trimmed = str.trim();
+  return (
+    trimmed.length >= 20 &&
+    /^[A-Za-z0-9_-]+$/.test(trimmed)
+  );
+}
+
+function getCleanUsername(channel) {
+  const username = channel?.username;
+  if (username && typeof username === "string" && !isDocId(username) && username !== "undefined" && username !== "null") {
+    return username.trim();
+  }
+
+  const display = channel?.display_name;
+  if (display && typeof display === "string" && !isDocId(display) && display !== "undefined" && display !== "null") {
+    return display.trim().toLowerCase().replace(/\s+/g, "_");
+  }
+
+  const cid = channel?.channel_id || channel?.id;
+  if (cid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || channel?.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
+    return "djsparkz";
+  }
+
+  if (cid && cid !== "undefined" && cid !== "null") {
+    return cid;
+  }
+
+  return "djsparkz";
+}
 
 const CATEGORIES = [
   "music",
@@ -40,6 +74,21 @@ export default function Browse() {
   const [loading, setLoading] = useState(true);
   const [backendLoading, setBackendLoading] = useState(true);
   const isScreenLoading = (loading || backendLoading) && !hasLoadedOnceRef.current;
+
+  const containerRef = useRef(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [deckMuted, setDeckMuted] = useState(true);
+
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const scrollTop = container.scrollTop;
+    const clientHeight = container.clientHeight || (window.innerHeight - 64);
+    const idx = Math.round(scrollTop / clientHeight);
+    if (idx !== activeIdx) {
+      setActiveIdx(idx);
+    }
+  };
 
   useLivepeerAutoPoll();
 
@@ -123,7 +172,7 @@ export default function Browse() {
           let livepeerStreamId = data.livepeer_stream_id || "";
 
           // Force correct values for djsparkz
-          if (data.username?.toLowerCase() === "djsparkz" || docId === "nsU1v44XFnN3FloJvNePqj6cBG2" || data.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
+          if (data.username?.toLowerCase() === "djsparkz" || docId === "nsU1v44XFnNn3FloJvNePqj6cBG2" || data.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
             playbackId = data.playback_url || data.playbackUrl || data.playback_id || "https://a1b2c3d4e5f6.us-east-1.playback.live-video.net/api/video/v1/us-east-1.123456789012.channel.djsparkz-channel.m3u8";
             livepeerStreamId = data.livepeer_stream_id || "arn:aws:ivs:us-east-1:123456789012:channel/djsparkz-channel";
           }
@@ -298,206 +347,397 @@ export default function Browse() {
         keywords="sparkztv, sparkz, live DJ streams, underground radio, dnb livestream, drum and bass set, breakbeat jungle, tech house live, garage music, dubplate selector, sound system culture"
       />
       <h1 className="sr-only">Live Drum and Bass, Jungle &amp; Underground DJ Sets on SPARKZ.TV</h1>
-      {/* Dynamic Twitch-style stream carousel */}
-      <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />
 
-      <Marquee items={CATEGORIES.map((c) => c.toUpperCase())} />
+      {/* Desktop / Tablet View (Prinstine & Untouched) */}
+      <div className="hidden md:block">
+        {/* Dynamic Twitch-style stream carousel */}
+        <StreamCarousel channels={stableChannels} allChannels={stableChannels} isLoading={isScreenLoading} />
 
-      {/* Filters + Grid */}
-      <section id="grid" className="mx-auto max-w-[1440px] px-6 pt-6 pb-12 sm:pb-16 lg:pb-20">
-        <div className="flex flex-col">
-          <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <div className="label-caps">Signal Directory</div>
-            <h2 className="font-display text-3xl font-black tracking-tighter sm:text-4xl">
-              {followingOnly ? "FOLLOWING" : liveOnly ? "LIVE NOW" : "ALL CHANNELS"}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {user && (
+        <Marquee items={CATEGORIES.map((c) => c.toUpperCase())} />
+
+        {/* Filters + Grid */}
+        <section id="grid" className="mx-auto max-w-[1440px] px-6 pt-6 pb-12 sm:pb-16 lg:pb-20">
+          <div className="flex flex-col">
+            <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <div className="label-caps">Signal Directory</div>
+              <h2 className="font-display text-3xl font-black tracking-tighter sm:text-4xl">
+                {followingOnly ? "FOLLOWING" : liveOnly ? "LIVE NOW" : "ALL CHANNELS"}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {user && (
+                <button
+                  data-testid="filter-following"
+                  onClick={() => setFollowingOnly((v) => !v)}
+                  className={`chip inline-flex items-center gap-1 ${followingOnly ? "active" : ""}`}
+                >
+                  <Heart className={`h-3 w-3 ${followingOnly ? "fill-current" : ""}`} />
+                  {followingOnly ? "FOLLOWING" : "SHOW FOLLOWED"}
+                </button>
+              )}
               <button
-                data-testid="filter-following"
-                onClick={() => setFollowingOnly((v) => !v)}
-                className={`chip inline-flex items-center gap-1 ${followingOnly ? "active" : ""}`}
+                data-testid="filter-live-only"
+                onClick={() => setLiveOnly((v) => !v)}
+                className={`chip ${liveOnly ? "active" : ""}`}
               >
-                <Heart className={`h-3 w-3 ${followingOnly ? "fill-current" : ""}`} />
-                {followingOnly ? "FOLLOWING" : "SHOW FOLLOWED"}
+                {liveOnly ? "◉ LIVE ONLY" : "○ SHOW ALL"}
               </button>
-            )}
-            <button
-              data-testid="filter-live-only"
-              onClick={() => setLiveOnly((v) => !v)}
-              className={`chip ${liveOnly ? "active" : ""}`}
-            >
-              {liveOnly ? "◉ LIVE ONLY" : "○ SHOW ALL"}
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-5 flex flex-wrap gap-2">
-          <button
-            data-testid="category-all"
-            onClick={() => setCategory(null)}
-            className={`chip ${category === null ? "active" : ""}`}
-          >
-            ALL
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              data-testid={`category-${c.replace(/\s+/g, "-")}`}
-              onClick={() => setCategory(c)}
-              className={`chip ${category === c ? "active" : ""}`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {isScreenLoading && rawChannels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 border border-dashed border-[#27272a] bg-[#09090b]/40 relative overflow-hidden" data-testid="directory-loading">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(229,255,0,0.02),transparent_70%)] pointer-events-none" />
-            <div className="relative z-10 flex flex-col items-center">
-              {/* Spinning / Pulsing Radar Scan Animation */}
-              <div className="relative h-16 w-16 mb-6 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border border-[#e5ff00]/10 animate-ping" />
-                <div className="absolute h-12 w-12 rounded-full border border-[#e5ff00]/30 animate-pulse" />
-                <Radio className="h-6 w-6 text-[#e5ff00] animate-bounce" />
-              </div>
-              <div className="font-display text-lg font-black uppercase tracking-widest text-[#e5ff00] animate-pulse">
-                // SCANNING NETWORK SIGNALS...
-              </div>
-              <p className="mt-2 font-mono text-[10px] text-zinc-500 uppercase tracking-widest text-center max-w-sm">
-                Awaiting connection response from primary transmitter. Please standby.
-              </p>
             </div>
-            
-            {/* 4 Skeleton Cards underneath the Scanner to maintain visual weight */}
-            <div className="w-full mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-35">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="border border-[#1a1a1d] bg-[#070709] flex flex-col relative overflow-hidden">
-                  <div className="aspect-video w-full bg-[#121215] relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#1c1c22] to-transparent animate-shimmer-slide" />
-                  </div>
-                  <div className="p-4 flex flex-col gap-2">
-                    <div className="h-4 w-3/4 bg-[#121215] rounded" />
-                    <div className="h-3 w-1/2 bg-[#121215] rounded" />
-                  </div>
+          </div>
+
+          <div className="mb-5 flex flex-wrap gap-2">
+            <button
+              data-testid="category-all"
+              onClick={() => setCategory(null)}
+              className={`chip ${category === null ? "active" : ""}`}
+            >
+              ALL
+            </button>
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                data-testid={`category-${c.replace(/\s+/g, "-")}`}
+                onClick={() => setCategory(c)}
+                className={`chip ${category === c ? "active" : ""}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {isScreenLoading && rawChannels.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 border border-dashed border-[#27272a] bg-[#09090b]/40 relative overflow-hidden" data-testid="directory-loading">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(229,255,0,0.02),transparent_70%)] pointer-events-none" />
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Spinning / Pulsing Radar Scan Animation */}
+                <div className="relative h-16 w-16 mb-6 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border border-[#e5ff00]/10 animate-ping" />
+                  <div className="absolute h-12 w-12 rounded-full border border-[#e5ff00]/30 animate-pulse" />
+                  <Radio className="h-6 w-6 text-[#e5ff00] animate-bounce" />
                 </div>
-              ))}
+                <div className="font-display text-lg font-black uppercase tracking-widest text-[#e5ff00] animate-pulse">
+                  // SCANNING NETWORK SIGNALS...
+                </div>
+                <p className="mt-2 font-mono text-[10px] text-zinc-500 uppercase tracking-widest text-center max-w-sm">
+                  Awaiting connection response from primary transmitter. Please standby.
+                </p>
+              </div>
+              
+              {/* 4 Skeleton Cards underneath the Scanner to maintain visual weight */}
+              <div className="w-full mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-35">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="border border-[#1a1a1d] bg-[#070709] flex flex-col relative overflow-hidden">
+                    <div className="aspect-video w-full bg-[#121215] relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#1c1c22] to-transparent animate-shimmer-slide" />
+                    </div>
+                    <div className="p-4 flex flex-col gap-2">
+                      <div className="h-4 w-3/4 bg-[#121215] rounded" />
+                      <div className="h-3 w-1/2 bg-[#121215] rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : safeChannels.length === 0 ? (
+            <div
+              data-testid="empty-state"
+              className="border border-dashed border-[#27272a] p-16 text-center"
+            >
+              <div className="font-display text-2xl font-black uppercase tracking-tighter text-zinc-500">
+                // NO SIGNAL
+              </div>
+              <p className="mt-3 font-mono text-sm text-zinc-500">
+                {followingOnly
+                  ? "None of the channels you follow are live right now."
+                  : liveOnly
+                    ? "No streams currently live. Check back soon."
+                    : "No channels registered yet. Be the first to broadcast."}
+              </p>
+              <Link to="/register" className="btn-primary mt-6 inline-flex">
+                START A CHANNEL
+              </Link>
+            </div>
+          ) : (
+            <div className="relative">
+              {isScreenLoading && (
+                <div className="absolute -top-12 right-0 flex items-center gap-1.5 font-mono text-[9px] text-[#e5ff00] uppercase tracking-widest animate-pulse z-20 bg-black/80 px-2.5 py-1 rounded border border-[#e5ff00]/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#e5ff00] animate-ping" />
+                  Updating Grid...
+                </div>
+              )}
+              <div
+                data-testid="channels-grid"
+                className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-300 ${isScreenLoading ? "opacity-75 select-none pointer-events-none" : ""}`}
+              >
+                {safeChannels.map((c, idx) => {
+                  const cardKey = c.id || c.channel_id || c.username || `channel-card-${idx}`;
+                  return <ChannelCard key={cardKey} channel={c} />;
+                })}
+              </div>
+            </div>
+          )}
+          </div>
+        </section>
+
+        {/* Platform Manifesto / SEO Transmission Grid */}
+        <section className="border-t border-[#1a1a1d] bg-[#030304] py-16 px-6">
+          <div className="mx-auto max-w-5xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+              <div className="space-y-4">
+                <div className="font-mono text-xs uppercase tracking-widest text-[#e5ff00]">// THE SIGNAL FREQUENCY</div>
+                <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-white leading-tight">
+                  PRESERVING UNDERGROUND SOUND SYSTEM CULTURE &amp; DNB FREQUENCIES
+                </h2>
+                <p className="font-sans text-zinc-400 text-sm leading-relaxed">
+                  We engineered <strong className="text-white">SPARKZ.TV</strong> to give independent electronic music broadcasters, bedroom selectors, and pirate-radio pioneers a space to stream live sets without algorithmic noise. Whether you are spinning deep <strong>drum and bass</strong>, rolling UK garage, <strong>old skool jungle</strong> vinyl, heavy-weight <strong>dubstep</strong> dubplates, or driving house and techno, our server scales with your audience.
+                </p>
+                <p className="font-sans text-zinc-400 text-sm leading-relaxed">
+                  Tune in to discover live radio channels, interact in our selector chats, and trade exclusive white labels with music fans across the globe.
+                </p>
+              </div>
+              <div className="grid gap-4 font-mono text-xs text-zinc-500">
+                <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
+                  <div className="font-bold text-zinc-300 mb-1.5 uppercase">// HIGH RESOLUTION BROADCAST QUALITY</div>
+                  <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
+                    Our custom media pipelines route dynamic adaptive channels directly to listeners, prioritizing <strong>sound system</strong> depth, rich <strong>bass dnb</strong> resonance, and 320kbps stereo clarity. Experience true spectrum fidelity.
+                  </p>
+                </div>
+                <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
+                  <div className="font-bold text-zinc-300 mb-1.5 uppercase">// REAL-TIME WEB COGNITION</div>
+                  <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
+                    Earn functional Watts points automatically for every minute of live audio streams watched. Empower your favorite <strong>underground</strong> broadcasters by submitting custom live reactions or unlocking elite channel badges.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        ) : safeChannels.length === 0 ? (
-          <div
-            data-testid="empty-state"
-            className="border border-dashed border-[#27272a] p-16 text-center"
-          >
-            <div className="font-display text-2xl font-black uppercase tracking-tighter text-zinc-500">
-              // NO SIGNAL
-            </div>
-            <p className="mt-3 font-mono text-sm text-zinc-500">
-              {followingOnly
-                ? "None of the channels you follow are live right now."
-                : liveOnly
-                  ? "No streams currently live. Check back soon."
-                  : "No channels registered yet. Be the first to broadcast."}
+        </section>
+
+        {/* Featured DJ Profiles Section with Firestore Follow Integration */}
+        <FeaturedDJProfiles />
+
+        {/* Search Crawler Friendly Sitemap & Platform Index Hub */}
+        <section className="border-t border-[#1c1c1f] bg-[#050506] py-16 px-6">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="font-display text-lg font-bold uppercase tracking-wider text-[#e5ff00] mb-4">// PLATFORM DIRECTORY &amp; STATION INDEX</h2>
+            <p className="text-zinc-400 font-sans text-sm leading-relaxed mb-8">
+              Welcome to <strong className="text-[#e5ff00]">SPARKZ.TV</strong>, the definitive underground broadcasting hub for electronic music creators, selectors, and pirate-radio sound system selectors. Stream high-fidelity, high-bandwidth live audio/video sets spanning deep drum and bass, jungle, dubstep, UK garage, and deep tech house. Discover dynamic transmissions, browse schedules, read our journal, or start your own channel.
             </p>
-            <Link to="/register" className="btn-primary mt-6 inline-flex">
-              START A CHANNEL
-            </Link>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-xs font-mono">
+              <div>
+                <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// SIGNALS</h3>
+                <ul className="space-y-2">
+                  <li><Link to="/directory" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MAIN STATION DIRECTORY</Link></li>
+                  <li><Link to="/live" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ QUICK LIVE PLAYER</Link></li>
+                  <li><Link to="/lounge" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ SELECTOR LOUNGE CHAT</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// RESOURCES</h3>
+                <ul className="space-y-2">
+                  <li><Link to="/blog" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ THE JOURNAL (NEWS &amp; CULTURE)</Link></li>
+                  <li><Link to="/register" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ CREATE BROADCASTER ACCOUNT</Link></li>
+                  <li><Link to="/login" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MEMBER LOGIN PORTAL</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// BROADCASTING ARCHETYPE</h3>
+                <p className="text-zinc-500 font-sans leading-relaxed text-[11px] uppercase">
+                  SPARKZ.TV is optimized for high-fidelity 320kbps audio performance. No third-party advertisements or algorithmic dampeners.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Mobile-Only Vertical Swipe Stream Deck (TikTok/Twitch style scroller) */}
+      <div 
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="block md:hidden fixed top-16 left-0 right-0 bottom-0 bg-black z-30 overflow-y-scroll snap-y snap-mandatory select-none"
+        style={{ scrollBehavior: "smooth" }}
+      >
+        {safeChannels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center p-8 h-full bg-[#050505] font-mono border border-[#1a1a1d]">
+            <Radio className="h-10 w-10 text-zinc-600 animate-pulse mb-4" />
+            <div className="font-display text-xl font-black text-zinc-500 uppercase tracking-tight">// NO ACTIVE TRANSMISSIONS</div>
+            <p className="text-zinc-600 text-[11px] mt-2 max-w-xs leading-relaxed uppercase">
+              No live channels match the current filters. Tap below to see all signals.
+            </p>
+            <button 
+              onClick={() => { setCategory(null); setLiveOnly(false); setFollowingOnly(false); }}
+              className="mt-6 border border-[#e5ff00] text-[#e5ff00] bg-black hover:bg-[#e5ff00] hover:text-black px-5 py-2.5 text-xs uppercase tracking-widest font-black transition-all duration-300"
+            >
+              RESET ALL FILTERS
+            </button>
           </div>
         ) : (
-          <div className="relative">
-            {isScreenLoading && (
-              <div className="absolute -top-12 right-0 flex items-center gap-1.5 font-mono text-[9px] text-[#e5ff00] uppercase tracking-widest animate-pulse z-20 bg-black/80 px-2.5 py-1 rounded border border-[#e5ff00]/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#e5ff00] animate-ping" />
-                Updating Grid...
+          safeChannels.map((c, idx) => {
+            const channelSlug = getCleanUsername(c);
+            const isActive = idx === activeIdx;
+            const isLive = Boolean(c.is_live || c.isLive);
+            
+            // Resolve avatar path
+            const avatarUrl = c.photo_url || c.photoUrl || c.avatar_url || c.avatar || c.profile_image || c.broadcaster_avatar;
+            const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
+
+            return (
+              <div 
+                key={`mobile-snap-${c.channel_id || c.username || idx}`}
+                className="relative h-[calc(100vh-4rem)] w-full snap-start bg-black flex flex-col justify-between overflow-hidden border-b border-zinc-900"
+              >
+                {/* Embedded Video Player */}
+                <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
+                  {isLive ? (
+                    <HlsPlayer
+                      playbackId={c.playback_id || c.playbackId}
+                      isLive={isLive}
+                      autoPlay={isActive}
+                      muted={!isActive || deckMuted}
+                      streamTitle={c.stream_title}
+                      viewerCount={c.viewer_count}
+                      username={channelSlug}
+                      controls={true}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-6 h-full w-full bg-[#050505] font-mono">
+                      <Radio className="h-12 w-12 text-zinc-700 animate-pulse mb-4" />
+                      <span className="chip px-2 py-0.5 text-[9px] bg-zinc-800 text-zinc-400 border border-zinc-700 uppercase tracking-widest">
+                        OFF AIR
+                      </span>
+                      <h3 className="text-xl font-display font-black text-white uppercase tracking-tight mt-4">
+                        @{channelSlug}
+                      </h3>
+                      <p className="text-zinc-600 text-xs uppercase tracking-wider mt-2 max-w-xs text-center">
+                        Selector is offline. Swipe to browse other broadcasters.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Overlay Bar */}
+                <div className="absolute top-0 inset-x-0 z-10 bg-gradient-to-b from-black/80 via-black/45 to-transparent p-4 flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e5ff00] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#e5ff00]"></span>
+                    </span>
+                    <span className="font-mono text-[10px] text-[#e5ff00] uppercase tracking-widest font-black">
+                      SWIPE STREAM DECK
+                    </span>
+                  </div>
+                  {isLive && (
+                    <div className="bg-black/80 border border-[#e5ff00]/30 px-2.5 py-1 font-mono text-[9px] uppercase text-[#e5ff00] tracking-widest flex items-center gap-1 backdrop-blur-sm">
+                      <Eye className="h-3 w-3" />
+                      {c.viewer_count || 0} SELECTORS
+                    </div>
+                  )}
+                </div>
+
+                {/* Left Side Category Quick Filters Inside Deck */}
+                <div className="absolute top-12 inset-x-0 z-20 flex gap-1.5 overflow-x-auto px-4 py-2 bg-gradient-to-b from-black/50 to-transparent scrollbar-none">
+                  <button
+                    onClick={() => setCategory(null)}
+                    className={`shrink-0 font-mono text-[9px] px-2.5 py-1 uppercase tracking-widest border border-zinc-800 transition ${category === null ? "bg-[#e5ff00] text-black border-[#e5ff00] font-black" : "bg-black/60 text-zinc-400"}`}
+                  >
+                    ALL
+                  </button>
+                  {CATEGORIES.map((catName) => (
+                    <button
+                      key={catName}
+                      onClick={() => setCategory(catName)}
+                      className={`shrink-0 font-mono text-[9px] px-2.5 py-1 uppercase tracking-widest border border-zinc-800 transition ${category === catName ? "bg-[#e5ff00] text-black border-[#e5ff00] font-black" : "bg-black/60 text-zinc-400"}`}
+                    >
+                      {catName}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick Floating Controls (Mute / Unmute, Share) on Right Edge */}
+                <div className="absolute right-4 bottom-32 z-20 flex flex-col gap-3">
+                  <button
+                    onClick={() => setDeckMuted(!deckMuted)}
+                    className="h-10 w-10 rounded-full bg-black/75 border border-[#e5ff00]/30 flex items-center justify-center text-[#e5ff00] hover:bg-black transition shadow-md"
+                    title={deckMuted ? "Unmute Deck" : "Mute Deck"}
+                  >
+                    {deckMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/channel/${channelSlug}`;
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `SPARKZ.TV - @${channelSlug}`,
+                          text: `Tune in to @${channelSlug} streaming live on SPARKZ.TV!`,
+                          url: shareUrl,
+                        }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(shareUrl);
+                        toast.success("CHANNEL LINK COPIED TO CLIPBOARD!");
+                      }
+                    }}
+                    className="h-10 w-10 rounded-full bg-black/75 border border-[#e5ff00]/30 flex items-center justify-center text-[#e5ff00] hover:bg-black transition shadow-md"
+                    title="Share Channel"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Bottom Overlay Info (Streamer display, profile click, tune in button) */}
+                <div className="absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-black via-black/85 to-transparent p-5 pt-16">
+                  <div className="flex items-start gap-3">
+                    <Link to={`/channel/${channelSlug}`} className="shrink-0 relative block">
+                      <div className="absolute inset-0 rounded-full bg-[#e5ff00] blur-[2px] opacity-40" />
+                      <img
+                        src={resolvedAvatar || DEFAULT_AVATAR}
+                        alt=""
+                        className="relative h-10 w-10 rounded-full border border-[#e5ff00] object-cover"
+                      />
+                    </Link>
+                    
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Link to={`/channel/${channelSlug}`} className="font-display text-sm font-black text-white uppercase hover:text-[#e5ff00] transition">
+                          {c.display_name || c.username}
+                        </Link>
+                        <span className="font-mono text-[10px] text-zinc-500">@{channelSlug}</span>
+                      </div>
+                      
+                      <p className="font-sans text-xs text-zinc-200 line-clamp-2 mt-1 leading-normal font-semibold">
+                        {c.stream_title || "Underground DJ set"}
+                      </p>
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="chip text-[8px] px-1.5 py-0.5 bg-[#e5ff00]/10 text-[#e5ff00] border border-[#e5ff00]/20 font-mono uppercase tracking-widest">
+                          {c.category || "music"}
+                        </span>
+                        {isLive && (
+                          <span className="live-badge text-[8px] px-1.5 py-0.5 font-mono">
+                            LIVE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* High-tech selector link */}
+                  <div className="mt-3.5">
+                    <Link
+                      to={`/channel/${channelSlug}`}
+                      className="w-full font-mono text-[10px] font-black uppercase tracking-widest bg-[#e5ff00] text-black border border-[#e5ff00] py-2.5 text-center flex items-center justify-center gap-1.5 hover:bg-black hover:text-[#e5ff00] transition duration-300 shadow-[0_0_12px_rgba(229,255,0,0.1)] active:scale-95"
+                    >
+                      <Radio className="h-3.5 w-3.5 animate-pulse" />
+                      <span>TUNE IN &amp; LAUNCH CHAT</span>
+                    </Link>
+                  </div>
+                </div>
               </div>
-            )}
-            <div
-              data-testid="channels-grid"
-              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-300 ${isScreenLoading ? "opacity-75 select-none pointer-events-none" : ""}`}
-            >
-              {safeChannels.map((c, idx) => {
-                const cardKey = c.id || c.channel_id || c.username || `channel-card-${idx}`;
-                return <ChannelCard key={cardKey} channel={c} />;
-              })}
-            </div>
-          </div>
+            );
+          })
         )}
-        </div>
-      </section>
-
-      {/* Platform Manifesto / SEO Transmission Grid */}
-      <section className="border-t border-[#1a1a1d] bg-[#030304] py-16 px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-            <div className="space-y-4">
-              <div className="font-mono text-xs uppercase tracking-widest text-[#e5ff00]">// THE SIGNAL FREQUENCY</div>
-              <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-white leading-tight">
-                PRESERVING UNDERGROUND SOUND SYSTEM CULTURE &amp; DNB FREQUENCIES
-              </h2>
-              <p className="font-sans text-zinc-400 text-sm leading-relaxed">
-                We engineered <strong className="text-white">SPARKZ.TV</strong> to give independent electronic music broadcasters, bedroom selectors, and pirate-radio pioneers a space to stream live sets without algorithmic noise. Whether you are spinning deep <strong>drum and bass</strong>, rolling UK garage, <strong>old skool jungle</strong> vinyl, heavy-weight <strong>dubstep</strong> dubplates, or driving house and techno, our server scales with your audience.
-              </p>
-              <p className="font-sans text-zinc-400 text-sm leading-relaxed">
-                Tune in to discover live radio channels, interact in our selector chats, and trade exclusive white labels with music fans across the globe.
-              </p>
-            </div>
-            <div className="grid gap-4 font-mono text-xs text-zinc-500">
-              <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
-                <div className="font-bold text-zinc-300 mb-1.5 uppercase">// HIGH RESOLUTION BROADCAST QUALITY</div>
-                <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
-                  Our custom media pipelines route dynamic adaptive channels directly to listeners, prioritizing <strong>sound system</strong> depth, rich <strong>bass dnb</strong> resonance, and 320kbps stereo clarity. Experience true spectrum fidelity.
-                </p>
-              </div>
-              <div className="border border-zinc-800 bg-[#070709] p-5 rounded-sm">
-                <div className="font-bold text-zinc-300 mb-1.5 uppercase">// REAL-TIME WEB COGNITION</div>
-                <p className="font-sans text-[11px] leading-relaxed text-zinc-400">
-                  Earn functional Watts points automatically for every minute of live audio streams watched. Empower your favorite <strong>underground</strong> broadcasters by submitting custom live reactions or unlocking elite channel badges.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured DJ Profiles Section with Firestore Follow Integration */}
-      <FeaturedDJProfiles />
-
-      {/* Search Crawler Friendly Sitemap & Platform Index Hub */}
-      <section className="border-t border-[#1c1c1f] bg-[#050506] py-16 px-6">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="font-display text-lg font-bold uppercase tracking-wider text-[#e5ff00] mb-4">// PLATFORM DIRECTORY &amp; STATION INDEX</h2>
-          <p className="text-zinc-400 font-sans text-sm leading-relaxed mb-8">
-            Welcome to <strong className="text-[#e5ff00]">SPARKZ.TV</strong>, the definitive underground broadcasting hub for electronic music creators, selectors, and pirate-radio sound system selectors. Stream high-fidelity, high-bandwidth live audio/video sets spanning deep drum and bass, jungle, dubstep, UK garage, and deep tech house. Discover dynamic transmissions, browse schedules, read our journal, or start your own channel.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-xs font-mono">
-            <div>
-              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// SIGNALS</h3>
-              <ul className="space-y-2">
-                <li><Link to="/directory" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MAIN STATION DIRECTORY</Link></li>
-                <li><Link to="/live" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ QUICK LIVE PLAYER</Link></li>
-                <li><Link to="/lounge" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ SELECTOR LOUNGE CHAT</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// RESOURCES</h3>
-              <ul className="space-y-2">
-                <li><Link to="/blog" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ THE JOURNAL (NEWS &amp; CULTURE)</Link></li>
-                <li><Link to="/register" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ CREATE BROADCASTER ACCOUNT</Link></li>
-                <li><Link to="/login" className="text-zinc-400 hover:text-[#e5ff00] transition-colors">✦ MEMBER LOGIN PORTAL</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white uppercase font-bold tracking-widest mb-3 text-xs border-b border-[#27272a] pb-1">// BROADCASTING ARCHETYPE</h3>
-              <p className="text-zinc-500 font-sans leading-relaxed text-[11px] uppercase">
-                SPARKZ.TV is optimized for high-fidelity 320kbps audio performance. No third-party advertisements or algorithmic dampeners.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

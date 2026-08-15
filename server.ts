@@ -213,13 +213,27 @@ async function setFirestoreDocRest(collectionName: string, docId: string, data: 
     return { stringValue: String(val) };
   }
 
+  // To prevent HTTP 400/404/403 failures when attempting to merge fields on a non-existent document using the REST API,
+  // we check if the document exists first. If it does not exist, we must turn off merge (and its updateMask parameter).
+  let actualMerge = merge;
+  if (merge) {
+    try {
+      const docSnap = await getFirestoreDocRest(collectionName, docId);
+      if (!docSnap || !docSnap.exists) {
+        actualMerge = false;
+      }
+    } catch (e) {
+      actualMerge = false;
+    }
+  }
+
   const fields: Record<string, any> = {};
   for (const [k, v] of Object.entries(data)) {
     fields[k] = encodeValue(v);
   }
 
   let url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${dbId}/documents/${collectionName}/${docId}?key=${firebaseConfig.apiKey}`;
-  if (merge) {
+  if (actualMerge) {
     for (const key of Object.keys(data)) {
       url += `&updateMask.fieldPaths=${encodeURIComponent(key)}`;
     }
@@ -369,7 +383,7 @@ async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string
 
     if (typeof channelOrId === "boolean") {
       // Legacy signature: updateFirestoreChannelLiveStatus(isLive) -> updates master channel
-      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
+      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
       isLive = channelOrId;
     } else {
       isLive = isLiveInput !== undefined ? isLiveInput : false;
@@ -384,7 +398,7 @@ async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string
 
     if (!channel) {
       // Fallback to master if no channel is matched
-      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
+      channel = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
     }
 
     if (!channel) {
@@ -394,8 +408,8 @@ async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string
 
     const isMaster =
       (channel.username || "").toLowerCase() === "djsparkz" ||
-      channel.channel_id === "nsU1v44XFnN3FloJvNePqj6cBG2" ||
-      channel.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2";
+      channel.channel_id === "nsU1v44XFnNn3FloJvNePqj6cBG2" ||
+      channel.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
 
     // Update in-memory channel to ensure REST API is instantly in sync
     channel.is_live = isLive;
@@ -426,7 +440,7 @@ async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string
     };
 
     if (isMaster) {
-      const primaryDocId = "nsU1v44XFnN3FloJvNePqj6cBG2";
+      const primaryDocId = "nsU1v44XFnNn3FloJvNePqj6cBG2";
       // Update both document keys to cover all lookup types in Firestore
       await setFirestoreDocSafe("channels", primaryDocId, updatePayload, true);
       await setFirestoreDocSafe("channels", "djsparkz", updatePayload, true);
@@ -655,7 +669,7 @@ class InMemStore {
   seedDefaults() {
     const now = new Date().toISOString();
     const djsparkzUser: UserDoc = {
-      uid: "nsU1v44XFnN3FloJvNePqj6cBG2",
+      uid: "nsU1v44XFnNn3FloJvNePqj6cBG2",
       email: "djsparkz@sparkz.tv",
       username: "djsparkz",
       display_name: "djsparkz",
@@ -841,14 +855,14 @@ function isDummyOrInvalid(channel: any) {
 function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, viewerIp?: string } = {}) {
   if (!c || c.channel_id === "undefined" || c.username === "undefined") return {};
   
-  const isMaster = (c.username || "").toLowerCase() === "djsparkz" || c.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2";
-  const user = db.users.get(c.user_uid || "nsU1v44XFnN3FloJvNePqj6cBG2");
+  const isMaster = (c.username || "").toLowerCase() === "djsparkz" || c.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
+  const user = db.users.get(c.user_uid || "nsU1v44XFnNn3FloJvNePqj6cBG2");
   const activePhoto = c.photo_url || user?.photo_url || null;
   
   const channelId = isMaster ? "djsparkz" : (c.channel_id || c.username || "");
   const username = isMaster ? "djsparkz" : (c.username || "");
   const displayName = isMaster ? "djsparkz" : (c.display_name || username);
-  const userUid = isMaster ? "nsU1v44XFnN3FloJvNePqj6cBG2" : (c.user_uid || "");
+  const userUid = isMaster ? "nsU1v44XFnNn3FloJvNePqj6cBG2" : (c.user_uid || "");
   const playbackId = c.playback_id || "";
 
   const trueViewerCount = getStrictViewerCount(channelId, username);
@@ -892,8 +906,8 @@ function channelPublic(c: ChannelDoc, opts: { include_stream_key?: boolean, view
 }
 
 async function getMasterChannel() {
-  let chan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnN3FloJvNePqj6cBG2");
-  const user = db.users.get("nsU1v44XFnN3FloJvNePqj6cBG2")!;
+  let chan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
+  const user = db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2")!;
 
   if (!chan || !chan.ivs_channel_arn || !chan.playback_id || !chan.stream_key) {
     const ivsData = await getOrCreatePersistentIvsChannel("djsparkz");
@@ -905,7 +919,7 @@ async function getMasterChannel() {
     } else {
       chan = {
         channel_id: "djsparkz",
-        user_uid: "nsU1v44XFnN3FloJvNePqj6cBG2",
+        user_uid: "nsU1v44XFnNn3FloJvNePqj6cBG2",
         username: "djsparkz",
         display_name: user?.display_name || "djsparkz",
         photo_url: user?.photo_url || null,
@@ -925,7 +939,7 @@ async function getMasterChannel() {
       };
     }
     db.channels.set("djsparkz", chan);
-    db.channels.set("nsU1v44XFnN3FloJvNePqj6cBG2", chan);
+    db.channels.set("nsU1v44XFnNn3FloJvNePqj6cBG2", chan);
     
     // Persist IVS data to Firestore immediately so it's cached
     await setFirestoreDocSafe("channels", "djsparkz", {
@@ -934,7 +948,7 @@ async function getMasterChannel() {
       playback_id: chan.playback_id,
       rtmp_url: chan.rtmp_url,
     }, true);
-    await setFirestoreDocSafe("channels", "nsU1v44XFnN3FloJvNePqj6cBG2", {
+    await setFirestoreDocSafe("channels", "nsU1v44XFnNn3FloJvNePqj6cBG2", {
       ivs_channel_arn: chan.ivs_channel_arn,
       stream_key: chan.stream_key,
       playback_id: chan.playback_id,
@@ -959,7 +973,7 @@ async function syncChannelLiveStatus(usernameOrId?: string, force = false) {
 
   try {
     let channel: ChannelDoc | undefined;
-    if (targetKey === "djsparkz" || targetKey === "nsu1v44xfnn3flojvnepqj6cbg2") {
+    if (targetKey === "djsparkz" || targetKey === "nsu1v44xfnnn3flojvnepqj6cbg2") {
       channel = await getMasterChannel();
     } else {
       channel = db.channels.get(targetKey) || Array.from(db.channels.values()).find(
@@ -1096,10 +1110,10 @@ async function cleanupOtherChannels() {
       const username = (data?.username || "").toLowerCase().trim();
       const userUid = (data?.user_uid || data?.userUid || "").trim();
 
-      // We preserve "djsparkz" and owner's UID: "nsU1v44XFnN3FloJvNePqj6cBG2"
-      const isOwnerDoc = docId === "djsparkz" || docId === "nsU1v44XFnN3FloJvNePqj6cBG2" ||
-                          username === "djsparkz" || username === "nsu1v44xfnn3flojvnepqj6cbg2" ||
-                          userUid === "nsU1v44XFnN3FloJvNePqj6cBG2";
+      // We preserve "djsparkz" and owner's UID: "nsU1v44XFnNn3FloJvNePqj6cBG2"
+      const isOwnerDoc = docId === "djsparkz" || docId === "nsU1v44XFnNn3FloJvNePqj6cBG2" ||
+                          username === "djsparkz" || username === "nsu1v44xfnnn3flojvnepqj6cbg2" ||
+                          userUid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
 
       if (!isOwnerDoc) {
         console.log(`[Startup Cleanup] Deleting channel doc: ${docId} (username: ${username}, uid: ${userUid})`);
@@ -1117,7 +1131,7 @@ async function cleanupOtherChannels() {
       const uData = uDoc.data();
       const uUsername = (uData?.username || "").toLowerCase().trim();
 
-      const isOwnerUser = uDocId === "nsU1v44XFnN3FloJvNePqj6cBG2" || uUsername === "djsparkz";
+      const isOwnerUser = uDocId === "nsU1v44XFnNn3FloJvNePqj6cBG2" || uUsername === "djsparkz";
 
       if (!isOwnerUser) {
         console.log(`[Startup Cleanup] Deleting user doc: ${uDocId} (username: ${uUsername})`);
@@ -1193,7 +1207,7 @@ async function startServer() {
         const userUid = (cDoc.user_uid || cDoc.channel_id || "").trim();
 
         if (!username || username === "undefined" || username === "null") continue;
-        if (username === "djsparkz" || userUid === "nsU1v44XFnN3FloJvNePqj6cBG2") continue;
+        if (username === "djsparkz" || userUid === "nsU1v44XFnNn3FloJvNePqj6cBG2") continue;
 
         if (isDummyOrInvalid(cDoc)) continue;
         if (seenUsernames.has(username) || seenUids.has(userUid)) continue;
@@ -1218,7 +1232,7 @@ async function startServer() {
       await syncChannelLiveStatus(requestedId);
       const normalizedId = (requestedId || "").toLowerCase().trim();
 
-      if (normalizedId === "djsparkz" || normalizedId === "nsu1v44xfnn3flojvnepqj6cbg2") {
+      if (normalizedId === "djsparkz" || normalizedId === "nsu1v44xfnnn3flojvnepqj6cbg2") {
         const channel = await getMasterChannel();
         return res.json(channelPublic(channel, { include_stream_key: true }));
       }
@@ -1485,7 +1499,7 @@ async function startServer() {
 
   const authMiddleware = async (req: any, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
-    const fallbackUid = "nsU1v44XFnN3FloJvNePqj6cBG2";
+    const fallbackUid = "nsU1v44XFnNn3FloJvNePqj6cBG2";
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       req.authToken = null;
@@ -1782,7 +1796,7 @@ async function startServer() {
         user.display_name = req.body.display_name;
         db.users.set(user.uid, user);
 
-        if (user.uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
+        if (user.uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
           const channel = await getMasterChannel();
           channel.display_name = req.body.display_name;
           await setFirestoreDocSafe("channels", "djsparkz", { display_name: req.body.display_name }, true, req.authToken);
@@ -1852,6 +1866,66 @@ async function startServer() {
       });
     } catch (e: any) {
       return res.status(500).json({ error: "Failed to fetch user profile", details: e.message });
+    }
+  });
+
+  api.get("/users/profile-by-uid/:uid", async (req, res) => {
+    try {
+      const uid = req.params.uid;
+      let targetUser = db.users.get(uid);
+      if (!targetUser) {
+        try {
+          const snap = await getFirestoreDocSafe("users", uid);
+          if (snap && snap.exists) {
+            const data = snap.data();
+            targetUser = {
+              uid,
+              email: data.email || "",
+              username: data.username || "",
+              display_name: data.display_name || "",
+              photo_url: data.photo_url || null,
+              social_share_image_url: data.social_share_image_url || null,
+              bio: data.bio || "",
+              password_hash: data.password_hash || "",
+              created_at: data.created_at || new Date().toISOString(),
+              watts: data.watts !== undefined ? data.watts : 100,
+              follows: data.follows || [],
+              vinyl_bits: data.vinyl_bits || 0,
+              accumulated_bits_balance: data.accumulated_bits_balance || 0,
+            };
+            db.users.set(uid, targetUser);
+          }
+        } catch (e) {
+          console.warn(`[Profile REST Fetch Fail]`, e);
+        }
+      }
+
+      if (!targetUser) {
+        if (uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
+          targetUser = db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
+        } else {
+          targetUser = {
+            uid,
+            email: "user@sparkz.tv",
+            username: `user_${uid.substring(0, 5).toLowerCase()}`,
+            display_name: `SPARKZ Broadcaster`,
+            photo_url: null,
+            social_share_image_url: null,
+            bio: "Sound system selector on SPARKZ.TV",
+            password_hash: "",
+            created_at: new Date().toISOString(),
+            watts: 100,
+            follows: [],
+            vinyl_bits: 0,
+            accumulated_bits_balance: 0,
+          };
+          db.users.set(uid, targetUser);
+        }
+      }
+
+      return res.json(targetUser);
+    } catch (err: any) {
+      return res.status(500).json({ error: "Internal error" });
     }
   });
 
@@ -1998,7 +2072,7 @@ async function startServer() {
         (c) => (c.username || "").toLowerCase() === normalizedId
       );
 
-      if (!matchedChannel && (normalizedId === "djsparkz" || normalizedId === "nsu1v44xfnn3flojvnepqj6cbg2")) {
+      if (!matchedChannel && (normalizedId === "djsparkz" || normalizedId === "nsu1v44xfnnn3flojvnepqj6cbg2")) {
         matchedChannel = await getMasterChannel();
       }
 
@@ -2335,6 +2409,34 @@ async function startServer() {
     });
   });
 
+  let cachedFollowCounts: Record<string, number> | null = null;
+  let lastFollowCountsFetch = 0;
+  const CACHE_TTL_MS = 60000;
+
+  api.get("/follows/counts", async (req, res) => {
+    try {
+      const now = Date.now();
+      if (cachedFollowCounts && (now - lastFollowCountsFetch) < CACHE_TTL_MS) {
+        return res.json(cachedFollowCounts);
+      }
+      const followsDocs = await getFirestoreCollectionSafe("follows");
+      const counts: Record<string, number> = {};
+      followsDocs.forEach((d: any) => {
+        const data = d.data();
+        if (data && data.dj_username) {
+          const dj = data.dj_username.toLowerCase().trim();
+          counts[dj] = (counts[dj] || 0) + 1;
+        }
+      });
+      cachedFollowCounts = counts;
+      lastFollowCountsFetch = now;
+      return res.json(counts);
+    } catch (err: any) {
+      console.error("[Follows Count API Error]:", err);
+      return res.json(cachedFollowCounts || {});
+    }
+  });
+
   api.get("/users/mine/following", authMiddleware, async (req: any, res) => {
     const user = req.user;
     if (!user) {
@@ -2386,6 +2488,7 @@ async function startServer() {
     };
 
     try {
+      cachedFollowCounts = null;
       await setFirestoreDocSafe("follows", followId, followDoc, false, req.authToken);
       if (!user.follows) user.follows = [];
       if (!user.follows.includes(targetUsername)) {
@@ -2422,6 +2525,7 @@ async function startServer() {
     const followId = `${user.uid}_${targetUsername}`;
 
     try {
+      cachedFollowCounts = null;
       await deleteFirestoreDocSafe("follows", followId, req.authToken);
       if (user.follows) {
         user.follows = user.follows.filter((f: string) => f.toLowerCase() !== targetUsername);
@@ -2891,7 +2995,7 @@ async function startServer() {
     db.users.set(streamer.uid, streamer);
     
     await setFirestoreDocSafe("users", user.uid, { vinyl_bits: user.vinyl_bits }, true, req.authToken);
-    await setFirestoreDocSafe("users", streamer.uid, { accumulated_bits_balance: streamer.accumulated_bits_balance }, true, req.authToken);
+    await setFirestoreDocSafe("users", streamer.uid, { accumulated_bits_balance: streamer.accumulated_bits_balance }, true);
     
     // Trigger chat alert (WebSocket broadcast)
     const messagePayload = {
@@ -3006,7 +3110,7 @@ async function startServer() {
     
     // Save users to Firestore
     await setFirestoreDocSafe("users", user.uid, { vinyl_bits: user.vinyl_bits, subscriptions: user.subscriptions }, true, req.authToken);
-    await setFirestoreDocSafe("users", streamer.uid, { accumulated_bits_balance: streamer.accumulated_bits_balance }, true, req.authToken);
+    await setFirestoreDocSafe("users", streamer.uid, { accumulated_bits_balance: streamer.accumulated_bits_balance }, true);
     
     // Broadcast a sweet system alert to the chat room
     const messageId = "sub-alert-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
@@ -3344,7 +3448,7 @@ async function startServer() {
       user.photo_url = photoUrl;
       db.users.set(user.uid, user);
 
-      if (user.uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
+      if (user.uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
         const channel = await getMasterChannel();
         channel.photo_url = photoUrl;
         await setFirestoreDocSafe("channels", "djsparkz", { photo_url: photoUrl }, true, req.authToken);
@@ -4105,7 +4209,7 @@ async function startServer() {
             db.users.set(uid, localUser);
           }
 
-          if (localUser && (localUser.email === "markysparks99@gmail.com" || uid === "nsU1v44XFnN3FloJvNePqj6cBG2")) {
+          if (localUser && (localUser.email === "markysparks99@gmail.com" || uid === "nsU1v44XFnNn3FloJvNePqj6cBG2")) {
             localUser.username = "djsparkz";
             localUser.display_name = "djsparkz";
           }

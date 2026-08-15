@@ -36,7 +36,7 @@ function getCleanUsername(channel) {
   }
 
   const cid = channel?.channel_id || channel?.id;
-  if (cid === "nsU1v44XFnN3FloJvNePqj6cBG2" || channel?.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
+  if (cid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || channel?.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
     return "djsparkz";
   }
 

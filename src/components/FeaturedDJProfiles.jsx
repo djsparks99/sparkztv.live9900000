@@ -44,10 +44,26 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   const [liveChannels, setLiveChannels] = useState({});
-  const [allFollows, setAllFollows] = useState([]);
+  const [followerCounts, setFollowerCounts] = useState({});
   const [myFollowsMap, setMyFollowsMap] = useState({});
   const [actionLoading, setActionLoading] = useState({});
   const [copiedDJ, setCopiedDJ] = useState(null);
+
+  // Fetch initial follow counts
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await fetch("/api/follows/counts");
+        if (res.ok) {
+          const data = await res.json();
+          setFollowerCounts(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch follow counts:", err);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   // Sync local search query with global URL search parameters
   useEffect(() => {
@@ -112,33 +128,29 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
       }
     );
 
-    // 2. Real-time Firestore listener for ALL follows to compute exact follower counts
-    const unsubFollows = onSnapshot(
-      collection(db, "follows"),
-      (snapshot) => {
-        const followsList = [];
-        const myMap = {};
-        snapshot.docs.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data && data.dj_username) {
-            const cleanDj = data.dj_username.toLowerCase();
-            followsList.push({
-              id: docSnap.id,
-              ...data,
-              dj_username: cleanDj,
-            });
-            if (user && data.user_uid === user.uid) {
-              myMap[cleanDj] = true;
+    // 2. Real-time Firestore listener for ONLY the current user's follows (O(1) footprint)
+    let unsubFollows = () => {};
+    if (user && user.uid) {
+      const q = query(collection(db, "follows"), where("user_uid", "==", user.uid));
+      unsubFollows = onSnapshot(
+        q,
+        (snapshot) => {
+          const myMap = {};
+          snapshot.docs.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.dj_username) {
+              myMap[data.dj_username.toLowerCase()] = true;
             }
-          }
-        });
-        setAllFollows(followsList);
-        setMyFollowsMap(myMap);
-      },
-      (err) => {
-        console.warn("Firestore follows listener in FeaturedDJProfiles:", err);
-      }
-    );
+          });
+          setMyFollowsMap(myMap);
+        },
+        (err) => {
+          console.warn("Firestore follows listener in FeaturedDJProfiles:", err);
+        }
+      );
+    } else {
+      setMyFollowsMap({});
+    }
 
     return () => {
       unsubChannels();
@@ -146,23 +158,13 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
     };
   }, [user]);
 
-  // Compute followers count per DJ directly from Firestore data
-  const followerCounts = useMemo(() => {
-    const counts = {};
-    allFollows.forEach((f) => {
-      const dj = f.dj_username;
-      counts[dj] = (counts[dj] || 0) + 1;
-    });
-    return counts;
-  }, [allFollows]);
-
   // Combine static curated list with dynamic Firestore updates
   const djList = useMemo(() => {
     // 1. Process default curated list
     const list = DEFAULT_FEATURED_DJS.map((dj) => {
       const uname = dj.username.toLowerCase();
       const liveInfo = liveChannels[uname] || liveChannels[uname.toLowerCase()];
-      const isLive = liveInfo ? liveInfo.is_live : (uname === "djsparkz" ? Boolean(liveChannels["nsu1v44xfnn3flojvnepqj6cbg2"]?.is_live || liveChannels["nsU1v44XFnN3FloJvNePqj6cBG2"]?.is_live) : false);
+      const isLive = liveInfo ? liveInfo.is_live : (uname === "djsparkz" ? Boolean(liveChannels["nsu1v44xfnnn3flojvnepqj6cbg2"]?.is_live || liveChannels["nsU1v44XFnNn3FloJvNePqj6cBG2"]?.is_live) : false);
       const followersFromDb = followerCounts[uname] || 0;
       const baseFollowers = uname === "djsparkz" ? 248 : 42;
       const totalFollowers = baseFollowers + followersFromDb;
@@ -213,7 +215,7 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
       const cleanUname = uname.toLowerCase();
       if (existingUsernames.has(cleanUname)) return;
       if (DUMMY_USERNAMES.includes(cleanUname)) return;
-      if (cleanUname === "nsu1v44xfnn3flojvnepqj6cbg2" || cleanUname === "djsparkz") return;
+      if (cleanUname === "nsu1v44xfnnn3flojvnepqj6cbg2" || cleanUname === "djsparkz") return;
 
       const info = liveChannels[uname];
       const raw = info?.raw || {};
@@ -290,6 +292,10 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
       if (isCurrentlyFollowing) {
         // Direct Firestore delete write
         await unfollowDJInFirestore(user, cleanDj);
+        setFollowerCounts(prev => ({
+          ...prev,
+          [cleanDj]: Math.max(0, (prev[cleanDj] || 0) - 1)
+        }));
         toast.success(`Unfollowed @${dj.username}`, {
           description: "Removed from your Firestore follow list. You won't receive live stream notifications.",
         });
@@ -301,6 +307,10 @@ export default function FeaturedDJProfiles({ title = "FEATURED RESIDENT DJS", su
       } else {
         // Direct Firestore create write
         await followDJInFirestore(user, cleanDj, dj.display_name);
+        setFollowerCounts(prev => ({
+          ...prev,
+          [cleanDj]: (prev[cleanDj] || 0) + 1
+        }));
         toast.success(`Following @${dj.username}!`, {
           description: "Saved to Firestore. You'll get notified as soon as they start broadcasting.",
         });

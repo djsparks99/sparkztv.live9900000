@@ -33,11 +33,14 @@ export default function Profile() {
       setDisplayName(user.display_name || "");
       setBio(user.bio || "");
 
-      // Load additional metadata from Firestore
-      getDoc(doc(db, "users", user.uid))
-        .then((snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
+      // Load additional metadata from Express cache proxy with fallback to Firestore
+      fetch(`/api/users/profile-by-uid/${user.uid}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Fallback");
+          return res.json();
+        })
+        .then(data => {
+          if (data) {
             if (data.genre) setGenre(data.genre);
             if (data.location) setLocation(data.location);
             if (data.socials) {
@@ -50,7 +53,25 @@ export default function Profile() {
             }
           }
         })
-        .catch((err) => console.warn("Error fetching user profile metadata:", err));
+        .catch(() => {
+          getDoc(doc(db, "users", user.uid))
+            .then((snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                if (data.genre) setGenre(data.genre);
+                if (data.location) setLocation(data.location);
+                if (data.socials) {
+                  setScLink(data.socials.soundcloud || "");
+                  setMcLink(data.socials.mixcloud || "");
+                  setSpLink(data.socials.spotify || "");
+                  setIgLink(data.socials.instagram || "");
+                  setYtLink(data.socials.youtube || "");
+                  setTwLink(data.socials.twitter || "");
+                }
+              }
+            })
+            .catch((err) => console.warn("Error fetching user profile metadata:", err));
+        });
 
       api.get("/channels/mine", {
         params: {

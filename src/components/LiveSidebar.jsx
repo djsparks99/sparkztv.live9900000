@@ -63,7 +63,7 @@ function getNormalizedKey(data, docId) {
 
 function getDisplayName(c) {
   const cid = c?.channel_id || c?.id;
-  if (cid === "nsU1v44XFnN3FloJvNePqj6cBG2" || c?.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2" || c?.username === "djsparkz") {
+  if (cid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || c?.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || c?.username === "djsparkz") {
     return "djsparkz";
   }
   if (c?.display_name && typeof c.display_name === "string" && c.display_name.trim()) {
@@ -82,7 +82,7 @@ function getDisplayName(c) {
 
 function getTargetUsername(c) {
   const cid = c?.channel_id || c?.id;
-  if (cid === "nsU1v44XFnN3FloJvNePqj6cBG2" || c?.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2" || c?.username === "djsparkz") {
+  if (cid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || c?.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2" || c?.username === "djsparkz") {
     return "djsparkz";
   }
 
@@ -261,7 +261,7 @@ export default function LiveSidebar() {
             let playbackId = data.playback_id || data.playbackId || "";
             let livepeerStreamId = data.livepeer_stream_id || "";
 
-            if (data.username?.toLowerCase() === "djsparkz" || docId === "nsU1v44XFnN3FloJvNePqj6cBG2" || data.user_uid === "nsU1v44XFnN3FloJvNePqj6cBG2") {
+            if (data.username?.toLowerCase() === "djsparkz" || docId === "nsU1v44XFnNn3FloJvNePqj6cBG2" || data.user_uid === "nsU1v44XFnNn3FloJvNePqj6cBG2") {
               playbackId = data.playback_url || data.playbackUrl || data.playback_id || "https://a1b2c3d4e5f6.us-east-1.playback.live-video.net/api/video/v1/us-east-1.123456789012.channel.djsparkz-channel.m3u8";
               livepeerStreamId = data.livepeer_stream_id || "arn:aws:ivs:us-east-1:123456789012:channel/djsparkz-channel";
             }
