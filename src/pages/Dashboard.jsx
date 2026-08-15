@@ -226,6 +226,11 @@ export default function Dashboard() {
           }
         };
         await updateUserProfileInFirestore(user.uid, firestorePayload, user.username);
+        try {
+          await api.patch("/users/me", firestorePayload);
+        } catch (expressErr) {
+          console.warn("Could not sync profile changes with Express backend:", expressErr);
+        }
         setUser((prev) => ({
           ...prev,
           ...firestorePayload,

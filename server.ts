@@ -1130,13 +1130,57 @@ async function startServer() {
 
   app.get("/api/channels/mine", async (req, res) => {
     try {
-      await syncMasterChannelLiveStatus();
-      const channel = await getMasterChannel();
+      const uid = (req.headers["x-user-uid"] || req.query.uid || "").toString().trim();
+      const username = (req.headers["x-username"] || req.query.username || "").toString().trim();
+
+      let channel: ChannelDoc | undefined = undefined;
+      if (uid) {
+        const usernameLower = username.toLowerCase();
+        channel = db.channels.get(usernameLower) || db.channels.get(uid);
+        if (!channel) {
+          // Fetch from Firestore
+          const docSnap = await getFirestoreDocSafe("channels", uid);
+          if (docSnap && docSnap.exists) {
+            const data = docSnap.data();
+            channel = {
+              channel_id: data.channel_id || uid,
+              user_uid: data.user_uid || uid,
+              username: data.username || username,
+              display_name: data.display_name || username,
+              photo_url: data.photo_url || null,
+              thumbnail_url: null,
+              ivs_channel_arn: data.ivs_channel_arn || "",
+              stream_key: data.stream_key || "",
+              playback_id: data.playback_id || "",
+              stream_title: data.stream_title || `${username}'s Stream`,
+              category: data.category || "music",
+              is_live: data.is_live || false,
+              viewer_count: 0,
+              record_enabled: true,
+              last_updated: new Date().toISOString(),
+              rtmp_url: data.rtmp_url || "",
+              schedules: data.schedules || [],
+              tags: data.tags || [],
+              stream_started_at: null,
+            };
+            db.channels.set(uid, channel);
+            if (usernameLower) {
+              db.channels.set(usernameLower, channel);
+            }
+          }
+        }
+      }
+
+      if (!channel) {
+        await syncMasterChannelLiveStatus();
+        channel = await getMasterChannel();
+      }
+
       const publicData = channelPublic(channel, { include_stream_key: true });
       return res.json({
         ...publicData,
-        username: "djsparkz",
-        display_name: "djsparkz",
+        username: channel.username || "djsparkz",
+        display_name: channel.display_name || "djsparkz",
         stream_key: channel.stream_key,
         streamKey: channel.stream_key,
         playback_id: channel.playback_id,
@@ -1914,9 +1958,52 @@ async function startServer() {
     }
   });
 
-  const handleChannelUpdate = async (req: Request, res: Response) => {
+  const handleChannelUpdate = async (req: any, res: Response) => {
     try {
-      const channel = await getMasterChannel();
+      const user = req.user;
+      let channel: ChannelDoc | undefined = undefined;
+
+      if (user) {
+        const usernameLower = (user.username || "").toLowerCase().trim();
+        channel = db.channels.get(usernameLower) || db.channels.get(user.uid);
+        
+        if (!channel) {
+          // Dynamic Firestore lookup
+          const docSnap = await getFirestoreDocSafe("channels", user.uid);
+          if (docSnap && docSnap.exists) {
+            const data = docSnap.data();
+            channel = {
+              channel_id: data.channel_id || user.uid,
+              user_uid: data.user_uid || user.uid,
+              username: data.username || user.username,
+              display_name: data.display_name || user.display_name,
+              photo_url: data.photo_url || user.photo_url || null,
+              thumbnail_url: data.thumbnail_url || null,
+              ivs_channel_arn: data.ivs_channel_arn || "",
+              stream_key: data.stream_key || "",
+              playback_id: data.playback_id || "",
+              stream_title: data.stream_title || `${user.username}'s Stream`,
+              category: data.category || "music",
+              is_live: data.is_live || false,
+              viewer_count: 0,
+              record_enabled: true,
+              last_updated: new Date().toISOString(),
+              rtmp_url: data.rtmp_url || "",
+              schedules: data.schedules || [],
+              tags: data.tags || [],
+              stream_started_at: null,
+            };
+            db.channels.set(user.uid, channel);
+            if (usernameLower) {
+              db.channels.set(usernameLower, channel);
+            }
+          }
+        }
+      }
+
+      if (!channel) {
+        channel = await getMasterChannel();
+      }
 
       if (req.body?.stream_title !== undefined) {
         channel.stream_title = req.body.stream_title;
@@ -1936,6 +2023,15 @@ async function startServer() {
         }
         channel.tags = req.body.tags;
       }
+
+      // Update in local cache maps
+      db.channels.set(channel.channel_id, channel);
+      if (channel.username) {
+        db.channels.set(channel.username.toLowerCase(), channel);
+      }
+      if (channel.user_uid) {
+        db.channels.set(channel.user_uid, channel);
+      }
       
       // Persist updated channel metadata securely in Firestore
       await setFirestoreDocSafe("channels", channel.channel_id || "djsparkz", {
@@ -1944,7 +2040,7 @@ async function startServer() {
         thumbnail_url: channel.thumbnail_url,
         tags: channel.tags || [],
         last_updated: new Date().toISOString()
-      }, true, (req as any).authToken);
+      }, true, req.authToken);
 
       return res.json(channelPublic(channel, { include_stream_key: true }));
     } catch (err: any) {
@@ -1952,9 +2048,9 @@ async function startServer() {
     }
   };
 
-  api.patch("/channels/mine", handleChannelUpdate);
-  api.put("/channels/mine", handleChannelUpdate);
-  api.post("/channels/mine", handleChannelUpdate);
+  api.patch("/channels/mine", authMiddleware, handleChannelUpdate);
+  api.put("/channels/mine", authMiddleware, handleChannelUpdate);
+  api.post("/channels/mine", authMiddleware, handleChannelUpdate);
 
   // GET /channels/:username/emotes
   api.get("/channels/:username/emotes", async (req: any, res: Response) => {
@@ -2230,7 +2326,48 @@ async function startServer() {
 
   api.get("/channels/mine/schedules", authMiddleware, async (req: any, res) => {
     try {
-      const channel = await getMasterChannel();
+      const user = req.user;
+      let channel: ChannelDoc | undefined = undefined;
+      if (user) {
+        const usernameLower = (user.username || "").toLowerCase().trim();
+        channel = db.channels.get(usernameLower) || db.channels.get(user.uid);
+        if (!channel) {
+          const docSnap = await getFirestoreDocSafe("channels", user.uid);
+          if (docSnap && docSnap.exists) {
+            const data = docSnap.data();
+            channel = {
+              channel_id: data.channel_id || user.uid,
+              user_uid: data.user_uid || user.uid,
+              username: data.username || user.username,
+              display_name: data.display_name || user.display_name,
+              photo_url: data.photo_url || null,
+              thumbnail_url: null,
+              ivs_channel_arn: data.ivs_channel_arn || "",
+              stream_key: data.stream_key || "",
+              playback_id: data.playback_id || "",
+              stream_title: data.stream_title || `${user.username}'s Stream`,
+              category: data.category || "music",
+              is_live: data.is_live || false,
+              viewer_count: 0,
+              record_enabled: true,
+              last_updated: new Date().toISOString(),
+              rtmp_url: data.rtmp_url || "",
+              schedules: data.schedules || [],
+              tags: data.tags || [],
+              stream_started_at: null,
+            };
+            db.channels.set(user.uid, channel);
+            if (usernameLower) {
+              db.channels.set(usernameLower, channel);
+            }
+          }
+        }
+      }
+
+      if (!channel) {
+        channel = await getMasterChannel();
+      }
+
       return res.json(channel.schedules || []);
     } catch (e: any) {
       return res.status(500).json({ error: "Failed to fetch schedules" });
@@ -2244,9 +2381,42 @@ async function startServer() {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const channel = await getMasterChannel();
-      if (channel.user_uid !== user.uid && user.username !== "djsparkz") {
-        return res.status(403).json({ error: "Access Denied: You do not own this channel" });
+      const usernameLower = (user.username || "").toLowerCase().trim();
+      let channel = db.channels.get(usernameLower) || db.channels.get(user.uid);
+      if (!channel) {
+        const docSnap = await getFirestoreDocSafe("channels", user.uid);
+        if (docSnap && docSnap.exists) {
+          const data = docSnap.data();
+          channel = {
+            channel_id: data.channel_id || user.uid,
+            user_uid: data.user_uid || user.uid,
+            username: data.username || user.username,
+            display_name: data.display_name || user.display_name,
+            photo_url: data.photo_url || null,
+            thumbnail_url: null,
+            ivs_channel_arn: data.ivs_channel_arn || "",
+            stream_key: data.stream_key || "",
+            playback_id: data.playback_id || "",
+            stream_title: data.stream_title || `${user.username}'s Stream`,
+            category: data.category || "music",
+            is_live: data.is_live || false,
+            viewer_count: 0,
+            record_enabled: true,
+            last_updated: new Date().toISOString(),
+            rtmp_url: data.rtmp_url || "",
+            schedules: data.schedules || [],
+            tags: data.tags || [],
+            stream_started_at: null,
+          };
+          db.channels.set(user.uid, channel);
+          if (usernameLower) {
+            db.channels.set(usernameLower, channel);
+          }
+        }
+      }
+
+      if (!channel) {
+        channel = await getMasterChannel();
       }
 
       if (!channel.schedules) channel.schedules = [];
@@ -2293,9 +2463,42 @@ async function startServer() {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const channel = await getMasterChannel();
-      if (channel.user_uid !== user.uid && user.username !== "djsparkz") {
-        return res.status(403).json({ error: "Access Denied: You do not own this channel" });
+      const usernameLower = (user.username || "").toLowerCase().trim();
+      let channel = db.channels.get(usernameLower) || db.channels.get(user.uid);
+      if (!channel) {
+        const docSnap = await getFirestoreDocSafe("channels", user.uid);
+        if (docSnap && docSnap.exists) {
+          const data = docSnap.data();
+          channel = {
+            channel_id: data.channel_id || user.uid,
+            user_uid: data.user_uid || user.uid,
+            username: data.username || user.username,
+            display_name: data.display_name || user.display_name,
+            photo_url: data.photo_url || null,
+            thumbnail_url: null,
+            ivs_channel_arn: data.ivs_channel_arn || "",
+            stream_key: data.stream_key || "",
+            playback_id: data.playback_id || "",
+            stream_title: data.stream_title || `${user.username}'s Stream`,
+            category: data.category || "music",
+            is_live: data.is_live || false,
+            viewer_count: 0,
+            record_enabled: true,
+            last_updated: new Date().toISOString(),
+            rtmp_url: data.rtmp_url || "",
+            schedules: data.schedules || [],
+            tags: data.tags || [],
+            stream_started_at: null,
+          };
+          db.channels.set(user.uid, channel);
+          if (usernameLower) {
+            db.channels.set(usernameLower, channel);
+          }
+        }
+      }
+
+      if (!channel) {
+        channel = await getMasterChannel();
       }
 
       if (!channel.schedules) channel.schedules = [];
@@ -2347,9 +2550,42 @@ async function startServer() {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const channel = await getMasterChannel();
-      if (channel.user_uid !== user.uid && user.username !== "djsparkz") {
-        return res.status(403).json({ error: "Access Denied: You do not own this channel" });
+      const usernameLower = (user.username || "").toLowerCase().trim();
+      let channel = db.channels.get(usernameLower) || db.channels.get(user.uid);
+      if (!channel) {
+        const docSnap = await getFirestoreDocSafe("channels", user.uid);
+        if (docSnap && docSnap.exists) {
+          const data = docSnap.data();
+          channel = {
+            channel_id: data.channel_id || user.uid,
+            user_uid: data.user_uid || user.uid,
+            username: data.username || user.username,
+            display_name: data.display_name || user.display_name,
+            photo_url: data.photo_url || null,
+            thumbnail_url: null,
+            ivs_channel_arn: data.ivs_channel_arn || "",
+            stream_key: data.stream_key || "",
+            playback_id: data.playback_id || "",
+            stream_title: data.stream_title || `${user.username}'s Stream`,
+            category: data.category || "music",
+            is_live: data.is_live || false,
+            viewer_count: 0,
+            record_enabled: true,
+            last_updated: new Date().toISOString(),
+            rtmp_url: data.rtmp_url || "",
+            schedules: data.schedules || [],
+            tags: data.tags || [],
+            stream_started_at: null,
+          };
+          db.channels.set(user.uid, channel);
+          if (usernameLower) {
+            db.channels.set(usernameLower, channel);
+          }
+        }
+      }
+
+      if (!channel) {
+        channel = await getMasterChannel();
       }
 
       if (!channel.schedules) channel.schedules = [];
