@@ -227,8 +227,8 @@ export default function Channel() {
   const resolvedAvatar = avatarUrl ? fileUrl(avatarUrl) : null;
 
   // Render Metadata Bar Component
-  const metadataBar = (
-    <div className="border border-[#27272a] bg-[#0e0e10] py-4 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative">
+  const renderMetadataBar = (borderless = false) => (
+    <div className={`bg-[#0e0e10] py-4 px-4 relative ${borderless ? "" : "border border-[#27272a] shadow-[0_4px_20px_rgba(0,0,0,0.4)]"}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Left Column: Avatar + Profile details */}
         <div className="flex items-center gap-4 min-w-0 lg:flex-1">
@@ -558,10 +558,12 @@ export default function Channel() {
       {/* DESKTOP VIEW: Side-by-Side Split View (Video + Profile details scroll on the left, Chat stays locked on the right) */}
       <div className="hidden lg:flex w-full h-full overflow-hidden items-stretch">
         {/* Left Column (Main Scrollable Content Area) */}
-        <div className="flex-1 h-full overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
-          <div className="w-full max-w-[1150px] xl:max-w-[1300px] mx-auto space-y-6 pb-12">
-            {/* Player block */}
-            <div className="w-full bg-black border border-[#1f1f23] shadow-2xl">
+        <div className="flex-1 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent flex flex-col">
+          
+          {/* Unified Player + Metadata Panel: Sits completely flush directly underneath with zero gaps, spanning 100% width */}
+          <div className="w-full bg-[#0e0e10] border-b border-[#1f1f23] flex flex-col shrink-0">
+            {/* Video Player */}
+            <div className="w-full bg-black">
               <HlsPlayer
                 playbackId={channel.playback_id}
                 isLive={isLive}
@@ -572,9 +574,14 @@ export default function Channel() {
               />
             </div>
 
-            {/* Metadata bar */}
-            {metadataBar}
+            {/* Bottom Avatar & Stream Info Container (separated by a border, zero margins/paddings between blocks, edge-to-edge) */}
+            <div className="border-t border-[#1f1f23] w-full">
+              {renderMetadataBar(true)}
+            </div>
+          </div>
 
+          {/* Under-player details block (beautifully padded for readability, centered) */}
+          <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 pb-12">
             {/* Split row for schedules, past sessions, and cards */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
               {/* Main content subcolumn */}
@@ -658,7 +665,7 @@ export default function Channel() {
           </div>
 
           {/* Metadata bar */}
-          {metadataBar}
+          {renderMetadataBar()}
 
           {/* Stream info & QR code */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

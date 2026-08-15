@@ -264,7 +264,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Stream operation error:", error);
-      toast.error("Unable to update stream key. Please try again.");
+      const errMsg = error.response?.data?.message || error.response?.data?.error || "Unable to update stream key. Please try again.";
+      toast.error(errMsg);
     } finally {
       setCreatingStream(false);
     }

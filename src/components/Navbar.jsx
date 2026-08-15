@@ -88,7 +88,7 @@ export default function Navbar() {
   return (
     <header
       data-testid="site-navbar"
-      className="fixed top-0 left-0 right-0 z-40 border-b border-[#1f1f23] bg-[#0f0f12]/95 backdrop-blur w-full h-16 flex items-center"
+      className="sticky top-0 left-0 right-0 z-40 border-b border-[#1f1f23] bg-[#0f0f12]/95 backdrop-blur w-full h-16 flex items-center shrink-0"
     >
       <div className="w-full flex items-center justify-between px-4">
         {/* Left Section: Logo & Twitch-style Browse/Directory Links */}

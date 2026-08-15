@@ -497,25 +497,38 @@ async function updateFirestoreChannelLiveStatus(channelOrId: ChannelDoc | string
 
 console.log("SPARKZ.TV - Server booting up with universal avatar sync.");
 
+function cleanEnvVar(val: string | undefined): string {
+  if (!val) return "";
+  return val.trim()
+    .replace(/[\r\n\t]/g, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
 let ivsClient: IvsClient | null = null;
+let awsIntegrationFailed = false;
+
 function getIvsClient() {
+  if (awsIntegrationFailed) {
+    return null;
+  }
   if (!ivsClient) {
-    const region = process.env.AWS_REGION || "eu-west-1";
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    
+    const region = cleanEnvVar(process.env.AWS_REGION || "eu-west-1");
+    const accessKeyId = cleanEnvVar(process.env.AWS_ACCESS_KEY_ID);
+    const secretAccessKey = cleanEnvVar(process.env.AWS_SECRET_ACCESS_KEY);
+
     if (accessKeyId && secretAccessKey) {
       ivsClient = new IvsClient({
         region,
         credentials: { accessKeyId, secretAccessKey },
       });
-      console.log(`[AWS IVS] Client initialized successfully for region ${region}.`);
+      console.log(`[AWS IVS] Client initialized successfully for region ${region} with sanitized credentials.`);
     }
   }
   return ivsClient;
 }
 
-async function getOrCreatePersistentIvsChannel(username: string): Promise<{
+async function getOrCreatePersistentIvsChannel(username: string, throwOnError = false): Promise<{
   playbackUrl: string;
   streamKey: string;
   ingestEndpoint: string;
@@ -530,27 +543,81 @@ async function getOrCreatePersistentIvsChannel(username: string): Promise<{
       const listRes = await client.send(listCmd);
       
       if (listRes.channels && listRes.channels.length > 0) {
-        const existingSummary = listRes.channels[0];
-        const arn = existingSummary.arn;
-        
-        const keysRes = await client.send(new ListStreamKeysCommand({ channelArn: arn }));
-        let streamKeyVal = "";
-        
-        if (keysRes.streamKeys && keysRes.streamKeys.length > 0) {
-          const keyDetail = await client.send(new GetStreamKeyCommand({ arn: keysRes.streamKeys[0].arn }));
-          streamKeyVal = keyDetail.streamKey?.value || "";
-        }
+         const existingSummary = listRes.channels[0];
+         const arn = existingSummary.arn;
+         
+         const keysRes = await client.send(new ListStreamKeysCommand({ channelArn: arn }));
+         let streamKeyVal = "";
+         
+         if (keysRes.streamKeys && keysRes.streamKeys.length > 0) {
+           const keyDetail = await client.send(new GetStreamKeyCommand({ arn: keysRes.streamKeys[0].arn }));
+           streamKeyVal = keyDetail.streamKey?.value || "";
+         }
 
-        if (existingSummary.playbackUrl && streamKeyVal) {
-          return {
-            playbackUrl: existingSummary.playbackUrl,
-            streamKey: streamKeyVal,
-            ingestEndpoint: `rtmps://${(existingSummary.ingestEndpoint || "global-contribute.live-video.net").replace(/^rtmps?:\/\//, "").replace(/\/app\/?$/, "")}/app/`,
-            arn: arn!,
-          };
+         if (existingSummary.playbackUrl && streamKeyVal) {
+           return {
+             playbackUrl: existingSummary.playbackUrl,
+             streamKey: streamKeyVal,
+             ingestEndpoint: `rtmps://${(existingSummary.ingestEndpoint || "global-contribute.live-video.net").replace(/^rtmps?:\/\//, "").replace(/\/app\/?$/, "")}/app/`,
+             arn: arn!,
+           };
+         }
+      }
+    } catch (e: any) {
+      console.error("[AWS IVS] Error listing channels or stream keys:", e);
+      if (e && e.$response) {
+        console.error(`[AWS IVS] Raw HTTP Response Status: ${e.$response.statusCode}`);
+        console.error(`[AWS IVS] Raw HTTP Response Headers:`, JSON.stringify(e.$response.headers, null, 2));
+        if (e.$response.body) {
+          try {
+            let bodyStr = "";
+            if (typeof e.$response.body === "string") {
+              bodyStr = e.$response.body;
+            } else if (Buffer.isBuffer(e.$response.body)) {
+              bodyStr = e.$response.body.toString("utf8");
+            }
+            if (bodyStr) {
+              console.error(`[AWS IVS] Raw HTTP Response Body Snippet:\n`, bodyStr.slice(0, 1000));
+            }
+          } catch (err) {
+            console.error(`[AWS IVS] Could not parse raw response body:`, err);
+          }
         }
       }
-    } catch (e: any) {}
+
+      const responseHeaders = e && e.$response && e.$response.headers;
+      let amzErrorType = "";
+      if (responseHeaders) {
+        amzErrorType = responseHeaders["x-amzn-errortype"] || responseHeaders["X-Amzn-Errortype"] || "";
+      }
+
+      if (amzErrorType) {
+        const cleanType = amzErrorType.split(":")[0];
+        let errorMsg = `AWS IVS request failed with ${cleanType}. Please verify your AWS credentials, permissions, and region configuration.`;
+        if (cleanType.includes("InvalidSignatureException") || cleanType.includes("UnrecognizedClientException") || cleanType.includes("AuthFailure")) {
+          awsIntegrationFailed = true;
+          errorMsg = "AWS Signature Verification Failed (InvalidSignatureException). This indicates that either your AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is incorrect or contains copy-paste/encoding errors, or the AWS_REGION does not match your credentials.";
+        }
+        const customError = new Error(errorMsg);
+        if (throwOnError) throw customError;
+      }
+
+      const isJsonError = e && (
+        e.name === "SyntaxError" || 
+        e.message?.includes("JSON") || 
+        e.message?.includes("Deserialization") || 
+        e.message?.includes("control character")
+      );
+      if (isJsonError) {
+        awsIntegrationFailed = true;
+        const customError = new Error(
+          `AWS returned an HTML error page (HTTP ${e.$response?.statusCode || "unknown"}) instead of JSON. This indicates that your AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is invalid/expired, or the AWS_REGION is unreachable.`
+        );
+        if (throwOnError) throw customError;
+      } else if (throwOnError) {
+        throw e;
+      }
+    }
 
     try {
       const createCmd = new CreateChannelCommand({
@@ -573,7 +640,65 @@ async function getOrCreatePersistentIvsChannel(username: string): Promise<{
           arn: channelArn,
         };
       }
-    } catch (e: any) {}
+    } catch (e: any) {
+      console.error("[AWS IVS] Error creating channel:", e);
+      if (e && e.$response) {
+        console.error(`[AWS IVS] Raw HTTP Response Status: ${e.$response.statusCode}`);
+        console.error(`[AWS IVS] Raw HTTP Response Headers:`, JSON.stringify(e.$response.headers, null, 2));
+        if (e.$response.body) {
+          try {
+            let bodyStr = "";
+            if (typeof e.$response.body === "string") {
+              bodyStr = e.$response.body;
+            } else if (Buffer.isBuffer(e.$response.body)) {
+              bodyStr = e.$response.body.toString("utf8");
+            }
+            if (bodyStr) {
+              console.error(`[AWS IVS] Raw HTTP Response Body Snippet:\n`, bodyStr.slice(0, 1000));
+            }
+          } catch (err) {
+            console.error(`[AWS IVS] Could not parse raw response body:`, err);
+          }
+        }
+      }
+
+      const responseHeaders = e && e.$response && e.$response.headers;
+      let amzErrorType = "";
+      if (responseHeaders) {
+        amzErrorType = responseHeaders["x-amzn-errortype"] || responseHeaders["X-Amzn-Errortype"] || "";
+      }
+
+      if (amzErrorType) {
+        const cleanType = amzErrorType.split(":")[0];
+        let errorMsg = `AWS IVS request failed with ${cleanType}. Please verify your AWS credentials, permissions, and region configuration.`;
+        if (cleanType.includes("InvalidSignatureException") || cleanType.includes("UnrecognizedClientException") || cleanType.includes("AuthFailure")) {
+          awsIntegrationFailed = true;
+          errorMsg = "AWS Signature Verification Failed (InvalidSignatureException). This indicates that either your AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is incorrect or contains copy-paste/encoding errors, or the AWS_REGION does not match your credentials.";
+        }
+        const customError = new Error(errorMsg);
+        if (throwOnError) throw customError;
+      }
+
+      const isJsonError = e && (
+        e.name === "SyntaxError" || 
+        e.message?.includes("JSON") || 
+        e.message?.includes("Deserialization") || 
+        e.message?.includes("control character")
+      );
+      if (isJsonError) {
+        awsIntegrationFailed = true;
+        const customError = new Error(
+          `AWS returned an HTML error page (HTTP ${e.$response?.statusCode || "unknown"}) instead of JSON. This indicates that your AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is invalid/expired, or the AWS_REGION is unreachable.`
+        );
+        if (throwOnError) throw customError;
+      } else if (throwOnError) {
+        throw e;
+      }
+    }
+  }
+
+  if (throwOnError && !client) {
+    throw new Error("AWS IVS client is not initialized. Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.");
   }
 
   return {
@@ -954,13 +1079,16 @@ async function getMasterChannel() {
   let chan = db.channels.get("djsparkz") || db.channels.get("nsU1v44XFnNn3FloJvNePqj6cBG2");
   const user = db.users.get("nsU1v44XFnNn3FloJvNePqj6cBG2")!;
 
-  if (!chan || !chan.ivs_channel_arn || !chan.playback_id || !chan.stream_key) {
+  const hasDummyKey = chan && chan.stream_key === "SK_us-west-2_dummyKey999999";
+  const hasAWSClient = !!getIvsClient();
+
+  if (!chan || !chan.ivs_channel_arn || !chan.playback_id || !chan.stream_key || (hasDummyKey && hasAWSClient)) {
     const ivsData = await getOrCreatePersistentIvsChannel("djsparkz");
     if (chan) {
-      chan.ivs_channel_arn = chan.ivs_channel_arn || ivsData.arn;
-      chan.stream_key = chan.stream_key || ivsData.streamKey;
-      chan.playback_id = chan.playback_id || ivsData.playbackUrl;
-      chan.rtmp_url = chan.rtmp_url || ivsData.ingestEndpoint;
+      chan.ivs_channel_arn = ivsData.arn;
+      chan.stream_key = ivsData.streamKey;
+      chan.playback_id = ivsData.playbackUrl;
+      chan.rtmp_url = ivsData.ingestEndpoint;
     } else {
       chan = {
         channel_id: "djsparkz",
@@ -1086,6 +1214,17 @@ async function syncChannelLiveStatus(usernameOrId?: string, force = false) {
         } else {
           awsCheckSuccess = false;
           console.error(`[IVS Sync] AWS sync failed or encountered authorization/network issues for ${channel.username}:`, err.name || "Error", err.message);
+          const isAuthError = err.name?.includes("Signature") || 
+                              err.name?.includes("Auth") || 
+                              err.name?.includes("UnrecognizedClientException") ||
+                              err.message?.includes("Signature") || 
+                              err.message?.includes("credential") || 
+                              err.message?.includes("JSON") || 
+                              err.message?.includes("Deserialization");
+          if (isAuthError) {
+            awsIntegrationFailed = true;
+            console.warn("[IVS Sync] Flagged awsIntegrationFailed = true. Halting subsequent automated live status lookups to prevent request flooding.");
+          }
         }
       }
     }
@@ -1383,7 +1522,50 @@ async function startServer() {
 
   app.post("/api/stream/create", async (req, res) => {
     try {
-      const channel = await getMasterChannel();
+      const forceNew = req.body.forceNew === true;
+      let channel = await getMasterChannel();
+      const hasDummyKey = channel.stream_key === "SK_us-west-2_dummyKey999999";
+      const client = getIvsClient();
+
+      if (client && (forceNew || hasDummyKey)) {
+        console.log(`[AWS IVS] Dynamically retrieving real stream key from AWS. forceNew=${forceNew}, hasDummyKey=${hasDummyKey}`);
+        try {
+          const ivsData = await getOrCreatePersistentIvsChannel("djsparkz", true);
+          if (ivsData && ivsData.streamKey !== "SK_us-west-2_dummyKey999999") {
+            channel.ivs_channel_arn = ivsData.arn;
+            channel.stream_key = ivsData.streamKey;
+            channel.playback_id = ivsData.playbackUrl;
+            channel.rtmp_url = ivsData.ingestEndpoint;
+
+            db.channels.set("djsparkz", channel);
+            db.channels.set("nsU1v44XFnNn3FloJvNePqj6cBG2", channel);
+
+            // Sync with Firestore safely
+            await setFirestoreDocSafe("channels", "djsparkz", {
+              ivs_channel_arn: channel.ivs_channel_arn,
+              stream_key: channel.stream_key,
+              playback_id: channel.playback_id,
+              rtmp_url: channel.rtmp_url,
+            }, true);
+            await setFirestoreDocSafe("channels", "nsU1v44XFnNn3FloJvNePqj6cBG2", {
+              ivs_channel_arn: channel.ivs_channel_arn,
+              stream_key: channel.stream_key,
+              playback_id: channel.playback_id,
+              rtmp_url: channel.rtmp_url,
+            }, true);
+
+            console.log("[AWS IVS] Real stream key successfully loaded and saved to databases.");
+          }
+        } catch (awsErr: any) {
+          console.error("[AWS IVS] AWS IVS command failed:", awsErr);
+          return res.status(400).json({
+            error: "AWS IVS Integration Error",
+            message: `AWS IAM action failed: ${awsErr.message || awsErr}. Please verify that AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY have valid permissions (e.g. 'AmazonIVSFullAccess' or custom IAM stream key permission policies) attached.`,
+            details: awsErr.message || awsErr,
+          });
+        }
+      }
+
       return res.json({
         stream_key: channel.stream_key,
         streamKey: channel.stream_key,

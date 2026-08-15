@@ -365,9 +365,9 @@ export default function LiveSidebar() {
   return (
     <aside
       data-testid="live-sidebar"
-      className={`fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] flex-col border-r border-[#1f1f23] bg-[#0e0e10] lg:flex ${
-        collapsed ? "w-[60px]" : "w-[240px]"
-      } transition-[width,top,height] duration-150 overflow-x-hidden`}
+      className={`hidden lg:flex flex-col border-r border-[#1f1f23] bg-[#0e0e10] h-full shrink-0 ${
+        collapsed ? "w-[50px]" : "w-[200px]"
+      } transition-[width] duration-150 overflow-x-hidden`}
     >
       <header className="flex flex-col border-b border-[#1f1f23] px-3 py-3 gap-1 min-w-0 bg-[#0e0e10]">
         <div className="flex items-center justify-between gap-1 min-w-0">

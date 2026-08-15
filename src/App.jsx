@@ -30,9 +30,10 @@ export default function App() {
 
   // Check if we are on a clean page like Login/Register where a side-by-side stream shell might not be required
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+  const isChannelPage = location.pathname.startsWith("/channel/");
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-[#efeff1] font-sans flex flex-col selection:bg-[#e5ff00] selection:text-black">
+    <div className="h-screen bg-[#0e0e10] text-[#efeff1] font-sans flex flex-col selection:bg-[#e5ff00] selection:text-black overflow-hidden">
       {/* Global Auth Modal */}
       <AuthModal />
 
@@ -40,13 +41,13 @@ export default function App() {
       <Navbar />
 
       {/* Main App Container */}
-      <div className="flex flex-1 overflow-hidden h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         
         {/* Persistent Left Sidebar (hidden on standard login/register screens for clean center layouts) */}
         {!isAuthPage && <LiveSidebar />}
 
         {/* Scrollable Page Router Viewport */}
-        <main className="flex-1 overflow-y-auto bg-[#0e0e10] relative flex flex-col">
+        <main className={`flex-1 bg-[#0e0e10] relative flex flex-col min-h-0 ${isChannelPage ? "overflow-hidden h-full" : "overflow-y-auto"}`}>
           <Routes>
             {/* Standard Routes */}
             <Route path="/" element={<Browse />} />
