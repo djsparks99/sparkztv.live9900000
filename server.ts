@@ -581,6 +581,9 @@ interface UserDoc {
   accumulated_bits_balance?: number;
   payout_method?: string | null;
   payout_details?: string | null;
+  genre?: string;
+  location?: string;
+  socials?: any;
 }
 
 interface ChannelDoc {
@@ -781,6 +784,9 @@ async function syncUsersFromFirestore() {
         payout_method: data.payout_method || null,
         payout_details: data.payout_details || null,
         social_share_image_url: data.social_share_image_url || null,
+        genre: data.genre || "",
+        location: data.location || "",
+        socials: data.socials || null,
       });
     }
     console.log(`[Users Sync] Synced ${db.users.size} users from Firestore.`);
@@ -1100,56 +1106,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 async function cleanupOtherChannels() {
-  try {
-    console.log("[Startup Cleanup] Starting cleanup of other channels...");
-    const docs = await getFirestoreCollectionSafe("channels");
-    let count = 0;
-    for (const doc of docs) {
-      const docId = doc.id;
-      const data = doc.data();
-      const username = (data?.username || "").toLowerCase().trim();
-      const userUid = (data?.user_uid || data?.userUid || "").trim();
-
-      // We preserve "djsparkz" and owner's UID: "nsU1v44XFnNn3FloJvNePqj6cBG2"
-      const isOwnerDoc = docId === "djsparkz" || docId === "nsU1v44XFnNn3FloJvNePqj6cBG2" ||
-                          username === "djsparkz" || username === "nsu1v44xfnnn3flojvnepqj6cbg2" ||
-                          userUid === "nsU1v44XFnNn3FloJvNePqj6cBG2";
-
-      if (!isOwnerDoc) {
-        console.log(`[Startup Cleanup] Deleting channel doc: ${docId} (username: ${username}, uid: ${userUid})`);
-        await deleteFirestoreDocSafe("channels", docId);
-        count++;
-      }
-    }
-    console.log(`[Startup Cleanup] Finished. Deleted ${count} non-owner channels from Firestore.`);
-
-    // Let's also do the same for the users collection!
-    const userDocs = await getFirestoreCollectionSafe("users");
-    let userCount = 0;
-    for (const uDoc of userDocs) {
-      const uDocId = uDoc.id;
-      const uData = uDoc.data();
-      const uUsername = (uData?.username || "").toLowerCase().trim();
-
-      const isOwnerUser = uDocId === "nsU1v44XFnNn3FloJvNePqj6cBG2" || uUsername === "djsparkz";
-
-      if (!isOwnerUser) {
-        console.log(`[Startup Cleanup] Deleting user doc: ${uDocId} (username: ${uUsername})`);
-        await deleteFirestoreDocSafe("users", uDocId);
-        userCount++;
-      }
-    }
-    console.log(`[Startup Cleanup] Finished. Deleted ${userCount} non-owner users from Firestore.`);
-  } catch (err: any) {
-    console.warn("[Startup Cleanup] Error running channels/users cleanup:", err.message);
-  }
+  console.log("[Startup Cleanup] Bypassed automatic cleanup to protect production user and channel records.");
 }
 
 async function startServer() {
   db.channels.clear();
-  
-  // Clean up other channels and users on startup
-  await cleanupOtherChannels();
   
   // Load persisted Firestore records FIRST, then load master channel in background
   syncUsersFromFirestore()
@@ -1529,6 +1490,9 @@ async function startServer() {
                 payout_method: firestoreUser.payout_method || null,
                 payout_details: firestoreUser.payout_details || null,
                 social_share_image_url: firestoreUser.social_share_image_url || null,
+                genre: firestoreUser.genre || "",
+                location: firestoreUser.location || "",
+                socials: firestoreUser.socials || null,
               };
             }
           }
@@ -1599,6 +1563,9 @@ async function startServer() {
                 payout_method: firestoreUser.payout_method || null,
                 payout_details: firestoreUser.payout_details || null,
                 social_share_image_url: firestoreUser.social_share_image_url || null,
+                genre: firestoreUser.genre || "",
+                location: firestoreUser.location || "",
+                socials: firestoreUser.socials || null,
               };
             }
           }
@@ -1806,6 +1773,18 @@ async function startServer() {
         user.bio = req.body.bio;
         db.users.set(user.uid, user);
       }
+      if (req.body?.genre !== undefined) {
+        user.genre = req.body.genre;
+        db.users.set(user.uid, user);
+      }
+      if (req.body?.location !== undefined) {
+        user.location = req.body.location;
+        db.users.set(user.uid, user);
+      }
+      if (req.body?.socials !== undefined) {
+        user.socials = req.body.socials;
+        db.users.set(user.uid, user);
+      }
       if (req.body?.social_share_image_url !== undefined) {
         user.social_share_image_url = saveBase64ToUploads(req.body.social_share_image_url);
         db.users.set(user.uid, user);
@@ -1815,6 +1794,9 @@ async function startServer() {
       await setFirestoreDocSafe("users", user.uid, {
         display_name: user.display_name,
         bio: user.bio,
+        genre: user.genre || "",
+        location: user.location || "",
+        socials: user.socials || null,
         social_share_image_url: user.social_share_image_url || null,
         photo_url: user.photo_url || null,
         last_updated: new Date().toISOString()
@@ -1892,6 +1874,9 @@ async function startServer() {
               follows: data.follows || [],
               vinyl_bits: data.vinyl_bits || 0,
               accumulated_bits_balance: data.accumulated_bits_balance || 0,
+              genre: data.genre || "",
+              location: data.location || "",
+              socials: data.socials || null,
             };
             db.users.set(uid, targetUser);
           }
@@ -3452,6 +3437,19 @@ async function startServer() {
         const channel = await getMasterChannel();
         channel.photo_url = photoUrl;
         await setFirestoreDocSafe("channels", "djsparkz", { photo_url: photoUrl }, true, req.authToken);
+      }
+
+      // Sync photo_url to channel in-memory and Firestore for any broadcaster
+      if (user.username) {
+        const lowerUsername = user.username.toLowerCase();
+        const chan = db.channels.get(lowerUsername) || db.channels.get(user.uid);
+        if (chan) {
+          chan.photo_url = photoUrl;
+          db.channels.set(lowerUsername, chan);
+          db.channels.set(user.uid, chan);
+        }
+        await setFirestoreDocSafe("channels", user.uid, { photo_url: photoUrl }, true, req.authToken);
+        await setFirestoreDocSafe("channels", lowerUsername, { photo_url: photoUrl }, true, req.authToken);
       }
 
       // Persist the updated avatar/photo in Firestore securely

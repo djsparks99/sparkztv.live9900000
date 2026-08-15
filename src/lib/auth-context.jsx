@@ -69,9 +69,11 @@ export function AuthProvider({ children }) {
       let social_share_image_url = null;
       let bio = "Broadcasting live and loud on SPARKZ.TV";
       let display_name = "djsparkz";
+      let userDoc = null;
       try {
-        const userDoc = await fetchUserDoc(fbUser.uid);
-        if (userDoc) {
+        const fetched = await fetchUserDoc(fbUser.uid);
+        if (fetched) {
+          userDoc = fetched;
           if (userDoc.photo_url) photo_url = userDoc.photo_url;
           if (userDoc.social_share_image_url) social_share_image_url = userDoc.social_share_image_url;
           if (userDoc.bio) bio = userDoc.bio;
@@ -87,6 +89,9 @@ export function AuthProvider({ children }) {
         photo_url: photo_url,
         social_share_image_url: social_share_image_url,
         bio: bio,
+        genre: userDoc?.genre || "",
+        location: userDoc?.location || "",
+        socials: userDoc?.socials || null,
         username_locked: true,
         created_at: new Date().toISOString(),
       };
@@ -109,6 +114,9 @@ export function AuthProvider({ children }) {
           photo_url: userDoc.photo_url || fbUser.photoURL || null,
           social_share_image_url: userDoc.social_share_image_url || null,
           bio: userDoc.bio || "",
+          genre: userDoc.genre || "",
+          location: userDoc.location || "",
+          socials: userDoc.socials || null,
           username_locked: true,
           created_at: userDoc.created_at,
         };
