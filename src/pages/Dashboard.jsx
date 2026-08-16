@@ -824,7 +824,12 @@ export default function Dashboard() {
                 </div>
 
                 <div className="pt-6 border-t border-[#1a1a20]">
-                  <button type="submit" data-testid="channel-save-btn" className="btn-primary w-full md:w-auto">
+                  <button
+                    type="submit"
+                    onClick={handleSave}
+                    data-testid="channel-save-btn"
+                    className="btn-primary w-full md:w-auto"
+                  >
                     SAVE CHANGES
                   </button>
                 </div>
