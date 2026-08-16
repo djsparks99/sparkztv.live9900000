@@ -198,7 +198,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const save = async (e) => {
+  const handleSave = async (e) => {
     if (e && typeof e.preventDefault === "function") {
       e.preventDefault();
     }
@@ -260,7 +260,7 @@ export default function Dashboard() {
       };
       setChannel(updatedChannel);
       window.dispatchEvent(new CustomEvent("channel-updated", { detail: { channel: updatedChannel } }));
-      toast.success("Channel & Profile updated successfully.");
+      toast.success("Changes saved successfully!");
     } catch (e) {
       console.error("Save channel error:", e);
       toast.error("Failed to update channel.");
@@ -604,7 +604,7 @@ export default function Dashboard() {
       {activeTab === "customization" && (
         <div className="grid gap-6 lg:grid-cols-12 animate-fadeIn">
           {/* Metadata Customization */}
-          <form onSubmit={save} className="lg:col-span-7">
+          <form onSubmit={handleSave} className="lg:col-span-7">
             <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
               <div className="label-caps">// STREAM METADATA CONFIG</div>
               <p className="mt-1 text-xs text-zinc-500 font-mono mb-6">
