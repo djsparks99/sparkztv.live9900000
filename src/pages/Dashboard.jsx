@@ -198,7 +198,10 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const save = async () => {
+  const save = async (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     try {
       const { data } = await api.patch("/channels/mine", {
         stream_title: title,
@@ -226,15 +229,29 @@ export default function Dashboard() {
           }
         };
         await updateUserProfileInFirestore(user.uid, firestorePayload, user.username);
+        let updatedData = null;
         try {
-          await api.patch("/users/me", firestorePayload);
+          const { data: uData } = await api.patch("/users/me", firestorePayload);
+          updatedData = uData;
         } catch (expressErr) {
           console.warn("Could not sync profile changes with Express backend:", expressErr);
         }
-        setUser((prev) => ({
-          ...prev,
-          ...firestorePayload,
-        }));
+        setUser((prev) => {
+          const currentPhotoUrl = prev?.photo_url || null;
+          const currentSocialShareImg = prev?.social_share_image_url || null;
+          const merged = {
+            ...prev,
+            ...firestorePayload,
+            ...(updatedData || {}),
+          };
+          if (!merged.photo_url && currentPhotoUrl) {
+            merged.photo_url = currentPhotoUrl;
+          }
+          if (!merged.social_share_image_url && currentSocialShareImg) {
+            merged.social_share_image_url = currentSocialShareImg;
+          }
+          return merged;
+        });
       }
 
       const updatedChannel = {

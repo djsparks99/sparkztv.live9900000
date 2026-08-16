@@ -2083,6 +2083,39 @@ async function startServer() {
         db.users.set(user.uid, user);
       }
 
+      // Try to fetch current doc from Firestore to make sure we don't overwrite photo_url and other fields with null/defaults if they are present in Firestore but missing in memory
+      let existingPhotoUrl = user.photo_url;
+      try {
+        const docSnap = await getFirestoreDocSafe("users", user.uid);
+        if (docSnap && docSnap.exists) {
+          const fsData = docSnap.data();
+          if (fsData) {
+            if (!existingPhotoUrl) {
+              existingPhotoUrl = fsData.photo_url || fsData.photoUrl || null;
+            }
+            if (user.watts === undefined && fsData.watts !== undefined) {
+              user.watts = fsData.watts;
+            }
+            if (user.payout_method === undefined && fsData.payout_method !== undefined) {
+              user.payout_method = fsData.payout_method;
+            }
+            if (user.payout_details === undefined && fsData.payout_details !== undefined) {
+              user.payout_details = fsData.payout_details;
+            }
+            if (!user.social_share_image_url && fsData.social_share_image_url) {
+              user.social_share_image_url = fsData.social_share_image_url;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[User Update] Fetch existing user doc error:", err);
+      }
+
+      if (existingPhotoUrl && !user.photo_url) {
+        user.photo_url = existingPhotoUrl;
+        db.users.set(user.uid, user);
+      }
+
       // Write updated profile back to Firestore securely
       await setFirestoreDocSafe("users", user.uid, {
         display_name: user.display_name,

@@ -92,7 +92,10 @@ export default function Profile() {
     }
   };
 
-  const save = async () => {
+  const save = async (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     setSaving(true);
     try {
       const payload = {
@@ -137,7 +140,22 @@ export default function Profile() {
         }
       }
 
-      setUser((prev) => (prev ? { ...prev, ...firestorePayload, ...(updatedData || {}) } : { ...firestorePayload, ...(updatedData || {}) }));
+      setUser((prev) => {
+        const currentPhotoUrl = prev?.photo_url || null;
+        const currentSocialShareImg = prev?.social_share_image_url || null;
+        const merged = {
+          ...prev,
+          ...firestorePayload,
+          ...(updatedData || {}),
+        };
+        if (!merged.photo_url && currentPhotoUrl) {
+          merged.photo_url = currentPhotoUrl;
+        }
+        if (!merged.social_share_image_url && currentSocialShareImg) {
+          merged.social_share_image_url = currentSocialShareImg;
+        }
+        return merged;
+      });
 
       toast.success("Profile updated successfully!");
     } catch (err) {
