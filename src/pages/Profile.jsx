@@ -411,7 +411,7 @@ export default function Profile() {
           </div>
 
           {/* Form Area: Identity */}
-          <div className="lg:col-span-2">
+          <form onSubmit={save} className="lg:col-span-2">
             <div className="border border-[#27272a] bg-[#0a0a0a] p-6 h-full flex flex-col justify-between">
               <div className="space-y-5">
                 <div className="label-caps">// IDENTITY CONFIG</div>
@@ -468,7 +468,7 @@ export default function Profile() {
 
               <div className="mt-8 pt-6 border-t border-[#1a1a20]">
                 <button
-                  onClick={save}
+                  type="submit"
                   disabled={saving}
                   data-testid="profile-save"
                   className="btn-primary w-full md:w-auto"
@@ -477,7 +477,7 @@ export default function Profile() {
                 </button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
 

@@ -604,7 +604,7 @@ export default function Dashboard() {
       {activeTab === "customization" && (
         <div className="grid gap-6 lg:grid-cols-12 animate-fadeIn">
           {/* Metadata Customization */}
-          <div className="lg:col-span-7">
+          <form onSubmit={save} className="lg:col-span-7">
             <div className="border border-[#27272a] bg-[#0a0a0a] p-6">
               <div className="label-caps">// STREAM METADATA CONFIG</div>
               <p className="mt-1 text-xs text-zinc-500 font-mono mb-6">
@@ -824,13 +824,13 @@ export default function Dashboard() {
                 </div>
 
                 <div className="pt-6 border-t border-[#1a1a20]">
-                  <button data-testid="channel-save-btn" onClick={save} className="btn-primary w-full md:w-auto">
+                  <button type="submit" data-testid="channel-save-btn" className="btn-primary w-full md:w-auto">
                     SAVE CHANGES
                   </button>
                 </div>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Thumbnail Uploader column */}
           <div className="lg:col-span-5">
